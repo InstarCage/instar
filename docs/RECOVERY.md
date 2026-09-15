@@ -167,3 +167,34 @@ may send them, and only the recovery address ever receives), step 5 has
 nothing to drain, and step 6 is impossible: the program's rent stays where
 it is. That is the cost of a lost key, and the reason the upgrade authority
 belongs with the recovery keypair in cold storage.
+
+## The mainnet world, as ended
+
+Done on 2026-09-15 (UTC), all on program `A42YLDRf1WoVVzrkPpkGnvsKpJiN4oZCjHEvo4iMt6Tu`,
+World `HqZmXHmYBdQCUYWj8nQt5ivv5qfgCTvTFdMe9iGoVskH`:
+
+| when | what | tx |
+|---|---|---|
+| 04:51 | `set_recovery` → `2jAL8tWpVxB9rrQepYJzekk79kGXA1YSYywLmyWFgiWN` | `2NYmajaT…` |
+| 04:52 | last backup pulled: `backups/instar-mainnet-beta-2026-09-15T04-52-19Z.tgz` (journal, snapshot, `accounts.json`) | |
+| 04:52 | step 1 `begin_wind_down`; step 2 `sweep_to_recovery` 6.4666 SOL | `5ioHBS5n…` |
+| 04:53 | last coin-fee claim 0.0015 SOL; fee keypair drained to 0.005 SOL (gas for later claims); operator drained to 0.05 SOL (gas for steps 3–6) | `3f1j6iq7…`, `3kRXG4CW…` |
+| 04:54 | Railway service `world` taken down; the hourly backup task disabled | |
+
+Step 3 (`escheat`) opens **2027-03-14T04:52:28Z**. From that day, from this
+repository with `.keys/mainnet/` restored:
+
+```
+npx tsx scripts/operator.mts recover-all --to 2jAL8tWpVxB9rrQepYJzekk79kGXA1YSYywLmyWFgiWN --yes
+npx tsx scripts/operator.mts sweep-custodial --to 2jAL8tWpVxB9rrQepYJzekk79kGXA1YSYywLmyWFgiWN --nfts --yes   # DATA_DIR pointed at the unpacked backup
+npx tsx scripts/operator.mts recover-all --to 2jAL8tWpVxB9rrQepYJzekk79kGXA1YSYywLmyWFgiWN --yes            # closes records, credits, the World
+bash scripts/wsl-close-program.sh                                                                        # the program's rent, ~3.18 SOL
+npx tsx scripts/operator.mts recover-all --to 2jAL8tWpVxB9rrQepYJzekk79kGXA1YSYywLmyWFgiWN --yes            # drains the keys to zero
+```
+
+Until then the coin's creator fees keep accruing to the fee keypair
+(`4AVTpKswqAAeneBWysdc1AsiYYoHVZZ6MbV4KSyn7bYi`, sole payee of the sharing
+config); `npx tsx scripts/fees.mts claim --yes` pulls them any time, and a
+plain transfer moves them on. The world process is not running, so keepers
+exit with `reclaim_vault` / `withdraw` from their own wallets; custodial
+accounts are reachable only through `sweep-custodial` after escheat.
