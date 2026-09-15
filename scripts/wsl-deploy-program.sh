@@ -21,12 +21,14 @@ echo "deployer:   $(solana-keygen pubkey "$DEPLOYER") ($(solana balance --url "$
 solana program close --buffers --url "$RPC" --keypair "$DEPLOYER" --recipient "$(solana-keygen pubkey "$DEPLOYER")" 2>/dev/null || true
 # An upgrade larger than the space the program was first deployed with needs
 # the program account extended first (rent for the extra bytes, paid once).
-# 8 KB of headroom so the next small growth needs nothing.
+# The loader extends by 10 KB at least; 8 KB of headroom on top so the next
+# small growth needs nothing.
 have="$(solana program show "$PROGRAM_ID" --url "$RPC" 2>/dev/null | awk '/Data Length/ {print $3}')"
 need="$(stat -c %s target/deploy/instar.so)"
 if [ -n "$have" ] && [ "$need" -gt "$have" ]; then
-  echo "program data holds $have bytes, the artifact is $need: extending by $((need - have + 8192))"
-  solana program extend "$PROGRAM_ID" $((need - have + 8192)) --url "$RPC" --keypair "$DEPLOYER"
+  extra=$((need - have + 8192)); [ "$extra" -lt 10240 ] && extra=10240
+  echo "program data holds $have bytes, the artifact is $need: extending by $extra"
+  solana program extend "$PROGRAM_ID" "$extra" --url "$RPC" --keypair "$DEPLOYER"
 fi
 solana program deploy \
   --url "$RPC" --keypair "$DEPLOYER" \
