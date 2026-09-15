@@ -41,11 +41,11 @@ export const MIN_CLAIM = 1_000_000n;
 /// Compute-unit limits, from `scripts/fees.mts claim --dry-run` simulated on
 /// mainnet (2026-09): collect_creator_fee_v2 24.3k, the direct AMM leg (ATA
 /// create + collect + close) 30.9k, a lone close under 1k,
-/// distribute_creator_fees to one shareholder 28.6k. Each limit is at least
-/// 3x its measurement; the priority fee is priced on the limit. The shared
-/// AMM leg (transfer + distribute) is unmeasured until the coin graduates;
-/// its limit is the two legs' worth with room.
-export const CLAIM_CU = { CURVE: 75_000, AMM: 100_000, UNWRAP: 10_000, DISTRIBUTE: 90_000, TRANSFER_AND_DISTRIBUTE: 200_000 } as const;
+/// distribute_creator_fees to one shareholder 28.6k, the shared AMM leg
+/// (transfer_creator_fees_to_pump + distribute) 69.3k as sent on mainnet
+/// (49p7QMLJ…). Each limit is at least 3x its measurement; the priority fee
+/// is priced on the limit.
+export const CLAIM_CU = { CURVE: 75_000, AMM: 100_000, UNWRAP: 10_000, DISTRIBUTE: 90_000, TRANSFER_AND_DISTRIBUTE: 210_000 } as const;
 /// The fee keypair pays every claim and nothing but a claim ever pays it, so
 /// it must be seeded by hand. Preflight fails below this (0.02 SOL: rent for
 /// itself and a transient wSOL account, plus a season of fees).

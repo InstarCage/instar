@@ -96,7 +96,19 @@ const TICK_COST_LOG_MS = 60_000;
 /// events a stream frame can carry at most; a replay's backlog is not for the site
 const STREAM_EVENT_KEEP = 256;
 const SWEEP_INTERVAL_MS = 10 * 60_000;
+/// The share of a sweep booked to the pool while metabolism is still buying
+/// slots. Metabolism above METABOLISM_FULL buys nothing (capacity is capped
+/// at MAX_CAPACITY), so once it is there every sweep goes to the pool, and
+/// on the way there the metabolism half is capped at the shortfall.
 const SWEEP_POOL_BPS = 5000;
+const METABOLISM_FULL = BigInt(Math.ceil((MAX_CAPACITY - BASE_CAPACITY) / CAPACITY_PER_SOL * 1e9));
+/// pool_bps for a sweep of `spare` lamports given the metabolism on chain
+function sweepPoolBps(spare: bigint, metabolism: bigint): number {
+  const shortfall = metabolism < METABOLISM_FULL ? METABOLISM_FULL - metabolism : 0n;
+  const toMetabolism = spare * BigInt(10_000 - SWEEP_POOL_BPS) / 10_000n;
+  const metab = toMetabolism < shortfall ? toMetabolism : shortfall;
+  return Number(((spare - metab) * 10_000n + spare - 1n) / spare);
+}
 const HEARTBEAT_AFTER_S = 24 * 3600;
 
 const log = (line: string) => console.log(`[instar] ${line}`);
@@ -794,13 +806,14 @@ async function buildWorld() {
             problems: [...s.problems, ...s.poolProblems.map(p => `PumpSwap: ${p}`)],
           };
         }
-        const [bal, rent] = await withTimeout(Promise.all([chain.balance(fee.publicKey), chain.rentExempt(0)]), "fee keypair balance");
+        const [bal, rent, world] = await withTimeout(Promise.all([chain.balance(fee.publicKey), chain.rentExempt(0), chain.world()]), "fee keypair balance");
         // fund() runs under CU.IX; its fee comes out of the same wallet
         const spare = bal - rent - GAS_RESERVE - chain.fee(CU.IX);
         if (spare <= 0n) return;
-        const sig = await chain.fund(spare, SWEEP_POOL_BPS, fee);
+        const poolBps = sweepPoolBps(spare, world.metabolism);
+        const sig = await chain.fund(spare, poolBps, fee);
         store.logTx("fees", sig, true);
-        log(`swept ${formatSol(spare)} SOL of fee income into the world`);
+        log(`swept ${formatSol(spare)} SOL of fee income into the world, ${poolBps / 100}% to the pool${poolBps === 10_000 ? " (metabolism is full)" : ""}`);
       } catch (e: any) {
         log("fee sweep: " + String(e?.message ?? e).slice(0, 140));
       } finally {
@@ -858,7 +871,7 @@ async function buildWorld() {
   return {
     cluster: CLUSTER, googleClientId: GOOGLE_CLIENT_ID, publicUrl: PUBLIC_URL, coin, build, publicRpc: process.env.INSTAR_PUBLIC_RPC ?? "",
     // the rules the site quotes, so no rate is typed into a page
-    economy: { offerBase: OFFER_BASE.toString(), offerPerGen: OFFER_PER_GEN.toString(), founderPremium: Number(FOUNDER_PREMIUM), rewardEveryEpochs: REWARD_EVERY_EPOCHS, poolPayoutBps: Number(POOL_PAYOUT_BPS), sweepIntervalMs: SWEEP_INTERVAL_MS, sweepPoolBps: SWEEP_POOL_BPS, gasReserve: GAS_RESERVE.toString() },
+    economy: { offerBase: OFFER_BASE.toString(), offerPerGen: OFFER_PER_GEN.toString(), founderPremium: Number(FOUNDER_PREMIUM), rewardEveryEpochs: REWARD_EVERY_EPOCHS, poolPayoutBps: Number(POOL_PAYOUT_BPS), sweepIntervalMs: SWEEP_INTERVAL_MS, sweepPoolBps: SWEEP_POOL_BPS, metabolismFull: METABOLISM_FULL.toString(), gasReserve: GAS_RESERVE.toString() },
     corsOrigin: process.env.INSTAR_CORS_ORIGIN ?? "", siteDir: SITE_DIR, rootDir: ROOT, dataDir: DATA_DIR, adminToken: ADMIN_TOKEN,
     chain, store, engine, accounts, ops, log, bufferTicks: BUFFER_TICKS,
     tick: () => tick, capacity: () => capacity, lastEpoch: () => lastEpoch,

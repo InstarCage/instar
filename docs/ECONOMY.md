@@ -104,8 +104,9 @@ with its creator set to a fee keypair; until it launches the site names no
 mint. Its creator fees (0.30% of every trade on
 the bonding curve, 0.30%–0.95% by market-cap tier on PumpSwap, per pump's
 on-chain fee config) accrue in pump's creator vaults; the world claims them
-every ten minutes and sweeps the fee keypair into `fund(pool_bps = 5000)`:
-half to metabolism, half to the pool. `fund` is permissionless, so the
+every ten minutes and sweeps the fee keypair into `fund(pool_bps)`: half
+to metabolism and half to the pool until metabolism holds the 1.6 SOL that
+buys the full cage, then all of it to the pool. `fund` is permissionless, so the
 cage's income does not stop when the process does. The coin has no other
 utility and promises no value; the launch
 procedure, the claim mechanism and the caveats are in `docs/COIN.md`.

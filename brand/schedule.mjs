@@ -50,7 +50,7 @@ const base = [
   ["now", `Right now on ${j.cluster}: ${alive} alive of capacity ${j.capacity}, ${n(j.flies.length)} born, ${dead} died, ${j.epochs.length} epochs posted, latest ${last.epoch} at tick ${n(last.tick)}. Read from the world's journal, the same one you can fetch at ${U}/api/journal.`],
   ["licence", `Whose work this stands on: Berg et al. 2026, Janelia FlyEM. The complete connectome of a male Drosophila central nervous system, MaleCNS v1.0, CC BY 4.0. The census here is a byte-verifiable conversion of their data. It belongs to its authors; nothing here is their endorsement.`],
   ["hero", `A cage of flies, each driven by every neuron of a complete nervous system. Every fly an NFT. Every epoch hashed to Solana. Watch it live: ${U}`],
-  ["coin", `$INSTAR ${cfg.coin && cfg.coin.mint ? "is live" : "is not launched yet"}. When it is, its creator fees are claimed by the world and paid into the cage: half to metabolism (capacity), half to the pool (rewards). No governance, no access, no share of anything. The site will name the mint; nothing else does.`],
+  ["coin", `$INSTAR ${cfg.coin && cfg.coin.mint ? "is live" : "is not launched yet"}. When it is, its creator fees are claimed by the world and paid into the cage: half to metabolism (capacity) until the cage is fully bought, then all to the pool (rewards). No governance, no access, no share of anything. The site will name the mint; nothing else does.`],
 ];
 // second-pass variants so the 24 hours are not three identical cycles
 const alt = [

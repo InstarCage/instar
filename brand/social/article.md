@@ -132,7 +132,7 @@ Credits are already pull-only. After 90 days without an operator action, anyone 
 
 [image: coin.png]
 
-$INSTAR will be a pump.fun coin whose creator fees are claimed by the world and paid into the cage: half to metabolism, half to the pool. The creator is the world's fee keypair, fixed at launch and unchangeable afterwards; every claim is a permissionless, public transaction. The coin confers nothing: no governance, no access, no share of any fly or of the cage. It has not launched yet; the site will name the mint the moment it does, and nothing on the site says otherwise until then.
+$INSTAR is a pump.fun coin (mint 7HVsxJsGrcako6PbRof7R2JoUb6Tbzmrz9B5NjwaNQVv) whose creator fees are claimed by the world and paid into the cage: half to metabolism and half to the pool until metabolism holds enough for the full cage, then all of it to the pool. The fee is paid to a fee-sharing config whose only payee is the world's fee keypair, fixed at launch with its admin revoked; every claim is a permissionless, public transaction. The coin confers nothing: no governance, no access, no share of any fly or of the cage.
 
 ## 12. Risks, plainly
 

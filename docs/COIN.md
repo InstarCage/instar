@@ -204,7 +204,10 @@ ten-minute sweep (`services/chain/fees.mts`, called from
    the amount read beforehand.
 
 Then the existing sweep runs: everything in the fee keypair above rent and
-`INSTAR_GAS_RESERVE` goes into `fund(pool_bps = 5000)`. A failed claim is
+`INSTAR_GAS_RESERVE` goes into `fund(pool_bps)`, where `pool_bps` is 5000
+while metabolism is still buying slots and 10000 once it holds
+`(40 − 8) / 20 = 1.6 SOL`, the most that changes capacity; on the way there
+the metabolism half is capped at the shortfall. A failed claim is
 logged and the sweep still runs on whatever is already there; the next
 interval tries again. Every read is bounded by a 30-second timeout, and a
 pass still running when the next interval comes round is logged, not
@@ -224,7 +227,9 @@ flags and the discriminator and simulates them without sending; `claim
 
 `fund(amount, pool_bps)` on the Instar program moves lamports from the payer
 into the World account and books `pool_bps` of them to the pool and the rest
-to metabolism. The sweep uses 5000: half to each.
+to metabolism. The sweep uses 5000, half to each, until metabolism holds
+1.6 SOL (capacity 40, the engine's slot count), and 10000 from then on:
+metabolism above 1.6 SOL buys nothing, so every later sweep is pool.
 
 - **Metabolism** is carrying capacity: the cage holds
   `8 + 20 × (metabolism in SOL)` flies, up to 40, the engine's slot count. It is never spent by the

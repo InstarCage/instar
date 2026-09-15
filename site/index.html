@@ -128,7 +128,7 @@
         <tr><td>resale</td><td class="n">&mdash;</td><td class="n">5%</td><td class="n">5%</td><td>90% credited to the seller; the vault travels with the fly</td></tr>
         <tr><td>death</td><td class="n">&mdash;</td><td class="n">35%</td><td class="n">15%</td><td>40% split among living heirs; 10% credited to the keeper</td></tr>
         <tr><td>cull</td><td class="n">&mdash;</td><td class="n">15%</td><td class="n">&mdash;</td><td>85% credited to the keeper</td></tr>
-        <tr><td>$INSTAR creator fees</td><td class="n">&mdash;</td><td class="n">50%</td><td class="n">50%</td><td>claimed by the world and funded in; see <a href="./coin.html">the coin</a></td></tr>
+        <tr><td>$INSTAR creator fees</td><td class="n">&mdash;</td><td class="n">50%*</td><td class="n">50%*</td><td>claimed by the world and funded in; once metabolism holds enough for the full cage, 100% to the pool; see <a href="./coin.html">the coin</a></td></tr>
       </tbody>
     </table>
     <p class="small dim">The full rules, with the program's account layout, are in <a href="./paper.html#market">the paper, section 4</a> and in <span class="mono">docs/ECONOMY.md</span>.</p>
@@ -178,13 +178,13 @@
   <div class="sec-no"><b>3</b>The coin</div>
   <div class="sec-body">
     <h2>$INSTAR feeds the cage.</h2>
-    <p class="lead">One coin on pump.fun. Its creator fees are claimed by the world and paid into the cage, half to metabolism and half to the pool, so trading the coin raises how many flies can live and how much they earn.</p>
+    <p class="lead">One coin on pump.fun. Its creator fees are claimed by the world and paid into the cage: half to metabolism and half to the pool until the cage's capacity is fully bought, then all of it to the pool, so trading the coin raises how many flies can live and, after that, only how much they earn.</p>
     <p>The creator address is fixed at launch and cannot be changed afterwards; it is the world's fee keypair, which does nothing but claim and hand over. Every claim is a transaction you can see in the record. The coin gives no ownership of flies, no vote, and no claim on anything; it is the way the outside world pays for the cage's electricity.</p>
     <table class="data">
       <tbody>
         <tr><td>mint</td><td class="sig" id="coin-mint">not launched yet</td></tr>
         <tr><td>creator (fees go here)</td><td class="sig" id="coin-creator">&mdash;</td></tr>
-        <tr><td>then into the cage</td><td>50% metabolism &middot; 50% pool, every sweep</td></tr>
+        <tr><td>then into the cage</td><td>50% metabolism &middot; 50% pool, every sweep, until metabolism buys the full cage; then 100% pool</td></tr>
       </tbody>
     </table>
     <p class="small dim"><a href="./coin.html">The coin page</a> has the whole mechanism and the fee flow, live.</p>
