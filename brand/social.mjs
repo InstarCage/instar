@@ -102,6 +102,18 @@ const cards = [
     const mint = cfg.coin && cfg.coin.mint ? cfg.coin.mint : "—";
     return `${head("$INSTAR, live on pump.fun", "The first fees are in the cage.")}<div class="grid3 big"><div class="m"><div class="v">${journal.capacity}</div><div class="k">flies the cage can hold now</div><div class="h">${caps.length ? `was ${caps[0]} at genesis` : ""}</div></div><div class="m"><div class="v">${sol(journal.metabolism)}<small>SOL</small></div><div class="k">metabolism</div><div class="h">sets capacity: 8 + 20 per SOL</div></div><div class="m"><div class="v">${sol(journal.pool)}<small>SOL</small></div><div class="k">pool</div><div class="h">pays the living flies every eighth epoch</div></div><div class="m"><div class="v">${sweeps}</div><div class="k">fee sweeps into the cage</div><div class="h">half metabolism, half pool</div></div><div class="m"><div class="v">${alive}</div><div class="k">flies alive</div><div class="h">${births} born on chain</div></div><div class="m"><div class="v">${epochs.length}</div><div class="k">epochs posted</div><div class="h">${v ? (v.epochs || []).length : 0} verified by replay</div></div></div><p class="note">mint ${mint} · creator fees claimed by the world every ten minutes, permissionlessly, and funded into the World account · no governance, no access, no share of any fly</p>`;
   })()),
+
+  // the first hour of the coin as a timeline: the claim and reward amounts
+  // come from the world's log, copied into .pipe.json (the journal keeps
+  // signatures, not amounts); the rest from the journal
+  ...(fs.existsSync(path.join(out, ".pipe.json")) ? [(() => {
+    const pipe = JSON.parse(fs.readFileSync(path.join(out, ".pipe.json"), "utf8"));
+    const hm = (iso) => iso.slice(11, 16) + " UTC";
+    const claimed = pipe.claims.reduce((a, c) => a + c.sol, 0);
+    const caps = (journal.entries || []).filter(e => e.type === "cap").map(e => e.value);
+    const maxGen = Math.max(0, ...journal.flies.map(f => f.generation || 0));
+    return card("pipe", `${head("$INSTAR · the first hour, on chain", "Trade, claim, fund, live.<br>It happened.")}<div class="timeline four"><div><b>${hm(pipe.launchedAt)} · launched</b>created on pump.fun; the creator is a fee-sharing config that pays the world's fee keypair 100%, shares final</div><div><b>${hm(pipe.claims[0].at)} – ${hm(pipe.claims[pipe.claims.length - 1].at)} · claimed, funded</b>${claimed.toFixed(4)} SOL of creator fees in ${pipe.claims.length} passes, ten minutes apart, funded into the World account: half metabolism, half pool</div><div><b>${hm(pipe.reward.at)} · epoch ${pipe.reward.epoch}</b>${pipe.reward.sol.toFixed(4)} SOL of the pool paid to the ${pipe.reward.flies} flies alive, by how each lived, in ${pipe.reward.txs} transactions</div><div><b>tick ${n(journal.tick)} · now</b>the cage holds ${journal.capacity} flies (${caps.length ? caps[0] : 8} at genesis); metabolism ${sol(journal.metabolism)} SOL, pool ${sol(journal.pool)} SOL; ${alive} alive, generation ${maxGen} born</div></div><p class="note" style="max-width:1050px">claims ${pipe.claims.map(c => c.sig.slice(0, 8) + "…").join(", ")} · every step a transaction on ${journal.worldPda} · epoch ${pipe.reward.epoch} replayed off-host and matched the chain</p><div class="plate-corner">${plate()}</div>`);
+  })()] : []),
 ];
 
 const css = `
@@ -148,6 +160,8 @@ td.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}
 .timeline{display:grid;grid-template-columns:repeat(3,1fr);gap:36px;margin-top:20px;font-size:24px;line-height:1.35}
 .timeline>div{border-top:2px solid #141311;padding-top:14px}
 .timeline b{display:block;font-family:"IBM Plex Mono",monospace;font-weight:500;font-size:16px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:8px}
+.timeline.four{grid-template-columns:repeat(4,1fr);gap:30px;font-size:24px;margin-top:44px}
+.plate-corner{position:absolute;right:96px;bottom:96px;width:340px;height:340px;transform:rotate(-8deg)}
 .cmd{font-family:"IBM Plex Mono",monospace;font-size:22px;background:#E9E2C9;padding:14px 18px;margin-top:18px;display:inline-block}
 .foot{position:absolute;left:84px;right:84px;bottom:36px;display:flex;justify-content:space-between;font-family:"IBM Plex Mono",monospace;font-size:14px;letter-spacing:.12em;text-transform:uppercase;color:#4A4640;border-top:1px solid rgba(20,19,17,.55);padding-top:12px}
 .card.cover{width:2000px;height:800px;padding:60px 96px}
