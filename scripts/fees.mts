@@ -70,23 +70,31 @@ function printStatus(s: FeeStatus) {
   else {
     console.log(`bonding curve     ${s.curve.address.toBase58()}`);
     console.log(`  complete        ${s.curve.complete ? "yes (graduated)" : "no (still trading on the curve)"}`);
-    console.log(`  creator         ${s.curve.creator.toBase58()}${s.curve.creator.equals(s.creator) ? "" : "  <- NOT this creator"}`);
+    console.log(`  creator         ${s.curve.creator.toBase58()}${s.curve.creator.equals(s.vaultOwner) ? s.mode === "shared" ? "  (the sharing config)" : "" : "  <- NOT this creator"}`);
     console.log(`  quote           ${s.curve.quoteMint.toBase58()}`);
     if (s.curve.holderReward) console.log("  holder reward   yes: fees go to holders");
+  }
+  const v = s.sharingConfig.view;
+  if (!v) console.log(`sharing config    none at ${s.sharingConfig.address.toBase58()}: fees are claimed by the creator directly`);
+  else {
+    console.log(`sharing config    ${s.sharingConfig.address.toBase58()}: ${v.active ? "active" : "PAUSED"}, admin ${v.admin.toBase58()}${v.adminRevoked ? " (revoked: the shares are final)" : " (can still change the shares)"}`);
+    for (const h of v.shareholders) console.log(`  shareholder     ${h.address.toBase58()} ${h.bps} bps${h.address.equals(s.creator) ? "  <- this creator" : ""}`);
   }
   console.log(`curve vault       ${s.curveVault.address.toBase58()}: ${sol(s.curveVault.lamports)}, claimable ${sol(s.curveVault.claimable)} (rent floor ${s.vaultRent} lamports, read from the RPC)`);
   if (!s.pool) console.log(`pumpswap pool     none at ${claimer.addresses.pool.toBase58()} (not graduated to PumpSwap)`);
   else {
     console.log(`pumpswap pool     ${s.pool.address.toBase58()} (canonical)`);
-    console.log(`  coin_creator    ${s.pool.coinCreator.toBase58()}${s.pool.coinCreator.equals(s.creator) ? "" : "  <- NOT this creator"}`);
+    console.log(`  coin_creator    ${s.pool.coinCreator.toBase58()}${s.pool.coinCreator.equals(s.vaultOwner) ? "" : "  <- NOT this creator"}`);
   }
   console.log(`amm vault         ${s.ammVault.ata.toBase58()} (authority ${s.ammVault.authority.toBase58()}): ${s.ammVault.exists ? sol(s.ammVault.amount) + " wSOL" : "not created yet"}`);
   console.log(`creator wSOL      ${s.creatorWsol.ata.toBase58()}: ${s.creatorWsol.exists ? sol(s.creatorWsol.amount) + " (unclosed)" : "closed / never opened"}`);
-  console.log(`sharing config    ${s.sharingConfig.exists ? `EXISTS at ${s.sharingConfig.address.toBase58()}` : "none"}`);
   console.log(`fee keypair       ${fee.publicKey.toBase58()}: ${sol(s.feeBalance)}`);
   for (const p of s.problems) console.log(`PROBLEM           ${p}`);
   for (const p of s.poolProblems) console.log(`PROBLEM (PumpSwap) ${p}`);
-  if (!s.problems.length) console.log(`claimable         ${s.poolProblems.length ? "the bonding-curve vault only: the PumpSwap leg is blocked (see above)" : "yes: this creator's vaults, plain claims work"}`);
+  if (!s.problems.length) {
+    const how = s.mode === "shared" ? `distributed by the sharing config, ${s.shareBps / 100}% to this creator` : "this creator's vaults, plain claims";
+    console.log(`claimable         ${s.poolProblems.length ? `the bonding-curve vault only (${how}): the PumpSwap leg is blocked (see above)` : `yes: ${how}`}`);
+  }
 }
 
 function printInstruction(ix: TransactionInstruction, n: number) {

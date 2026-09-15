@@ -114,9 +114,9 @@ try {
   if (core?.executable) ok(`Metaplex Core is deployed at ${MPL_CORE.toBase58()}`);
   else bad(`Metaplex Core (${MPL_CORE.toBase58()}) is not deployed on ${rpc}${cluster === "localnet" ? ": restart the validator with npm run localnet (it preloads program/deps/mpl_core.so)" : ""}`);
 
-  // The coin's creator fees can only reach the dish if the bonding curve
-  // names the fee keypair as creator; that is set once, at launch, and
-  // cannot be changed by us afterwards.
+  // The coin's creator fees can only reach the dish if the bonding curve's
+  // creator is the fee keypair, or a sharing config that pays it; that is
+  // set at launch and cannot be changed by us afterwards.
   if (coinMint && feeKey) {
     const mintInfo = await chain.connection.getAccountInfo(coinMint);
     if (!mintInfo) bad(`INSTAR_COIN_MINT ${coinMint.toBase58()} does not exist on ${cluster}`);
@@ -125,13 +125,14 @@ try {
       const s = await new FeeClaimer({ chain, mint: coinMint, fee: feeKey }).status();
       if (!s.curve) bad(`no pump.fun bonding curve for ${coinMint.toBase58()}: the coin was not launched on pump.fun, so there are no creator fees to claim`);
       else {
-        if (!s.curve.creator.equals(feeKey.publicKey)) {
-          bad(`bonding curve creator is ${s.curve.creator.toBase58()}, not the fee keypair ${feeKey.publicKey.toBase58()}: every creator fee this coin earns goes to that wallet instead of the dish, and pump.fun does not let us change it (docs/COIN.md)`);
-        } else {
-          ok("bonding curve creator is the fee keypair: creator fees go to the dish");
-          for (const p of s.problems) bad(p);
-          for (const p of s.poolProblems) bad(`PumpSwap: ${p}; the bonding-curve vault is still claimed`);
+        if (s.problems.length) for (const p of s.problems) bad(`${p}; pump.fun does not let us change it (docs/COIN.md)`);
+        else if (s.mode === "direct") ok("bonding curve creator is the fee keypair: creator fees go to the dish");
+        else {
+          const v = s.sharingConfig.view!;
+          ok(`bonding curve creator is the sharing config ${s.sharingConfig.address.toBase58()}, ${s.shareBps / 100}% to the fee keypair${v.shareholders.length > 1 ? ` (${v.shareholders.length} shareholders)` : ""}, shares ${v.adminRevoked ? "final" : "still changeable by " + v.admin.toBase58()}: creator fees go to the dish`);
+          if (!v.adminRevoked) warn(`the sharing config's admin ${v.admin.toBase58()} can still change who is paid; revoke it (pump-fees revoke_fee_sharing_authority) once the shares are right`);
         }
+        for (const p of s.poolProblems) bad(`PumpSwap: ${p}; the bonding-curve vault is still claimed`);
         if (s.curve.complete) ok(`graduated: canonical PumpSwap pool ${s.pool ? s.pool.address.toBase58() : "not found yet"}`);
         else ok("still on the bonding curve (not graduated)");
         ok(`claimable now: ${formatSol(s.curveVault.claimable)} SOL on the curve, ${formatSol(s.ammVault.amount)} SOL on PumpSwap${s.creatorWsol.amount > 0n ? `, ${formatSol(s.creatorWsol.amount)} SOL unclosed in the fee keypair's wSOL account` : ""}`);

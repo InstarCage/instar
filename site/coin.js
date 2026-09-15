@@ -24,6 +24,12 @@ const link = (kind, value, src, n = 8) => value ? `<a class="chain" href="${esc(
   }
   setHtml("coin-mint", coin.mint ? `${link("address", coin.mint, live, 44)} \u00b7 <a class="chain" href="https://pump.fun/coin/${esc(coin.mint)}" target="_blank" rel="noopener">pump.fun</a>` : `<span class="faint">not launched yet; the world will name it here when it is</span>`);
   setHtml("coin-creator", coin.creator ? link("address", coin.creator, live, 44) : `<span class="faint">no fee keypair configured on this world</span>`);
+  const f = coin.fees;
+  setHtml("coin-shape", !coin.mint ? `<span class="faint">&mdash;</span>`
+    : !f ? `<span class="faint">not read yet: the world reads it on its first claim pass after start</span>`
+    : f.problems.length ? `<b class="bad">PROBLEM</b> ${esc(f.problems.join("; "))}`
+    : f.mode === "direct" ? `the fee keypair itself, ${link("address", f.vaultOwner, live, 44)}`
+    : `fee-sharing config ${link("address", f.vaultOwner, live, 44)}: pays ${(f.shareholders || []).map(h => `${link("address", h.address, live, 8)} ${h.bps / 100}%`).join(", ")}${f.sharesFinal ? ", shares final (admin revoked)" : ", <b class=\"bad\">shares still changeable</b>"}; read at ${esc(new Date(f.at).toISOString().replace("T", " ").slice(0, 19))} UTC`);
 
   function render() {
     setText("lv-metab", sol(live.metabolism));
@@ -32,7 +38,7 @@ const link = (kind, value, src, n = 8) => value ? `<a class="chain" href="${esc(
     const fees = (live.txlog || []).filter(t => (t.kind === "claim-fees" || t.kind === "fees") && t.ok !== false);
     setText("lv-claims", fmt(fees.filter(t => t.kind === "fees").length));
     setHtml("lv-coin", coin.mint
-      ? `<b>$INSTAR</b> ${link("address", coin.mint, live)} on ${esc(live.cluster)} \u00b7 creator ${link("address", coin.creator, live)}`
+      ? `<b>$INSTAR</b> ${link("address", coin.mint, live)} on ${esc(live.cluster)} \u00b7 fees to ${link("address", coin.creator, live)}`
       : `<b>NOT LAUNCHED</b> the cage runs on births and resales; the fee keypair${coin.creator ? ` ${link("address", coin.creator, live)}` : ""} is swept regardless`);
     const rows = fees.slice(-24).reverse();
     setHtml("claims-table", `<thead><tr><th>When</th><th>Kind</th><th>Signature</th></tr></thead><tbody>${rows.length

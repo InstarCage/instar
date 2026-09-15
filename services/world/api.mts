@@ -29,10 +29,24 @@ export type StreamFly = {
 export type StreamEvent = { seq: number; tick: number; kind: number; name: string; uid: number; b: number; cause: string | null };
 export type Frame = { t: number; light: number; temp: number; flies: StreamFly[]; events: StreamEvent[] };
 
+/// The coin as /api/config tells it: the mint and fee keypair from the
+/// environment, and `fees`, what the chain said at the last claim pass:
+/// whether the fee keypair is the coin's creator (`direct`) or a shareholder
+/// of the pump-fees sharing config that is (`shared`), and what stands in
+/// the way of a claim, if anything.
+export type CoinConfig = {
+  mint: string | null;
+  creator: string | null;
+  fees: {
+    at: number; mode: "direct" | "shared"; vaultOwner: string; shareBps: number; graduated: boolean;
+    shareholders: { address: string; bps: number }[] | null; sharesFinal: boolean | null; problems: string[];
+  } | null;
+};
+
 export type WorldContext = {
   cluster: Cluster;
   googleClientId: string;
-  coin: { mint: string | null; creator: string | null };
+  coin: CoinConfig;
   build: { commit: string | null; dirty: boolean; at: string | null; wasmSha256: string; censusRoot: string };
   publicUrl: string;
   /// INSTAR_PUBLIC_RPC: the endpoint the site hands to browsers

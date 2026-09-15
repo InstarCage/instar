@@ -21,7 +21,7 @@ import { PublicKey } from "@solana/web3.js";
 import { CU, Chain, STATUS, formatSol, loadKeypair, parseSol, type Cluster, type CreatureView, type WorldView } from "../chain/solana.mts";
 import { FeeClaimer, withTimeout } from "../chain/fees.mts";
 import { Accounts, deriveMasterKey } from "./accounts.mts";
-import { createServer, type Boot, type Frame, type StreamEvent, type StreamFly } from "./api.mts";
+import { createServer, type Boot, type CoinConfig, type Frame, type StreamEvent, type StreamFly } from "./api.mts";
 import { CAUSE_NAME, EVENT, EVENT_NAME, Engine, FIRE_GROUP, NO_PARENT, POSE, hashHex, loadGraph } from "./engine.mts";
 import { JournalStore, releaseLock, writeAtomic, writeAtomicAsync, type Entry, type Op } from "./journal.mts";
 import { OpQueue } from "./ops.mts";
@@ -760,8 +760,10 @@ async function buildWorld() {
   // the gas reserve into the world. A failed claim leaves the sweep to run
   // on whatever is already there and is retried next interval.
   /// published on /api/config so the site can name the coin and where its
-  /// creator fees go without a redeploy when the coin launches
-  const coin: { mint: string | null; creator: string | null } = { mint: process.env.INSTAR_COIN_MINT ?? null, creator: null };
+  /// creator fees go without a redeploy when the coin launches. `fees` is
+  /// what the chain said at the last claim pass: how the creator fees reach
+  /// the fee keypair and whether anything stands in the way.
+  const coin: CoinConfig = { mint: process.env.INSTAR_COIN_MINT ?? null, creator: null, fees: null };
   if (feeFile) {
     const fee = loadKeypair(feeFile);
     coin.creator = fee.publicKey.toBase58();
@@ -784,6 +786,13 @@ async function buildWorld() {
           } catch (e: any) {
             log("fee claim: " + String(e?.message ?? e).slice(0, 200));
           }
+          const s = claimer.lastStatus;
+          if (s) coin.fees = {
+            at: Date.now(), mode: s.mode, vaultOwner: s.vaultOwner.toBase58(), shareBps: s.shareBps, graduated: !!s.pool,
+            shareholders: s.sharingConfig.view?.shareholders.map(h => ({ address: h.address.toBase58(), bps: h.bps })) ?? null,
+            sharesFinal: s.sharingConfig.view?.adminRevoked ?? null,
+            problems: [...s.problems, ...s.poolProblems.map(p => `PumpSwap: ${p}`)],
+          };
         }
         const [bal, rent] = await withTimeout(Promise.all([chain.balance(fee.publicKey), chain.rentExempt(0)]), "fee keypair balance");
         // fund() runs under CU.IX; its fee comes out of the same wallet

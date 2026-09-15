@@ -73,18 +73,18 @@
   <div class="sec-body">
     <h2>A fee pipe, nothing more.</h2>
     <p class="lead">$INSTAR confers nothing: no governance, no access, no share of any fly or of the cage, no promise that it will be worth more tomorrow than today. The engine never reads it. Buying it does not buy a fly.</p>
-    <p>What it does is mechanical. pump.fun charges a fee on every trade of every coin and pays part of it to the coin's <i>creator</i>, an address written into the coin at launch that nobody, including us, can change afterwards. For $INSTAR the creator is the world's <b>fee keypair</b>. That keypair does two things and nothing else: it claims the fees pump.fun has set aside for it, and it hands everything above a small gas reserve to the Instar program with the <span class="mono">fund</span> instruction, which books the money into the cage's treasuries. From then on it is under the program's rules like every other lamport.</p>
+    <p>What it does is mechanical. pump.fun charges a fee on every trade of every coin and pays part of it to the coin's <i>creator</i>, an address written into the coin at launch. For a coin launched from pump.fun's site the creator is a <i>fee-sharing config</i> of the Pump Fees program, a small account that names who is paid and in what proportion; for $INSTAR it names one payee, the world's <b>fee keypair</b>, for the whole of the fee, and its admin has been revoked, so nobody, including us, can change that afterwards. The fee keypair does two things and nothing else: it cranks the distribution pump.fun holds for it, and it hands everything above a small gas reserve to the Instar program with the <span class="mono">fund</span> instruction, which books the money into the cage's treasuries. From then on it is under the program's rules like every other lamport.</p>
     <table class="data">
       <tbody>
         <tr><td>mint</td><td class="sig" id="coin-mint">not launched yet</td></tr>
-        <tr><td>creator (where every fee goes)</td><td class="sig" id="coin-creator">&mdash;</td></tr>
+        <tr><td>fee keypair (where every fee ends up)</td><td class="sig" id="coin-creator">&mdash;</td></tr>
+        <tr><td>creator on the bonding curve</td><td class="sig" id="coin-shape">&mdash;</td></tr>
         <tr><td>launch settings</td><td>holder rewards off, cashback off, Mayhem off: each of those would route the fee away from the cage</td></tr>
-        <tr><td>fee share program</td><td>none, ever; a sharing config would break the claim path and is refused by the world</td></tr>
       </tbody>
     </table>
   </div>
   <aside class="sec-margin">
-    <div class="mnote"><b>Check the creator yourself</b><br>Open the mint on pump.fun or in an explorer and read the bonding curve's <span class="mono">creator</span> field. It must equal the address in the table. If it ever does not, the fees are going somewhere else and this page is wrong.</div>
+    <div class="mnote"><b>Check it yourself</b><br>Open the mint in an explorer and read the bonding curve's <span class="mono">creator</span> field, then that account's shareholders. The row above is what the world read on its last claim pass; <span class="mono">npx tsx scripts/fees.mts status</span> prints the same from any machine. If the payee is ever not the fee keypair, the fees are going somewhere else and this page is wrong.</div>
   </aside>
 </section>
 
@@ -94,7 +94,7 @@
     <h2>Trade, claim, fund, live.</h2>
     <ol class="steps">
       <li><b>A trade happens.</b> On the bonding curve pump.fun sets 0.30% of it aside for the creator; after graduation to PumpSwap the creator's share follows pump's published schedule by market cap (0.30% to 0.95%). The on-chain fee config is authoritative; the world reads what arrived, not a rate.</li>
-      <li><b>The world claims it.</b> Every ten minutes the fee keypair collects from the curve vault and, after graduation, from the PumpSwap vault. Both claims are permissionless (anyone may crank them; the money still goes to the creator), and every claim is a transaction in the record below.</li>
+      <li><b>The world claims it.</b> Every ten minutes the fee keypair has pump.fun pay out the curve vault to the config's payees and, after graduation, first sweeps the PumpSwap vault into it. Both are permissionless (anyone may crank them; the money still goes to the payees), and every claim is a transaction in the record below.</li>
       <li><b>It is funded into the cage.</b> Everything above a <span data-n="gasReserve">&mdash;</span> SOL gas reserve goes to the program: <b>50% to metabolism</b>, which sets the cage's capacity at 8 + 20 flies per SOL (up to 40), and <b>50% to the pool</b>.</li>
       <li><b>The pool pays the living.</b> Every eighth epoch a quarter of the pool is credited to the vaults of the flies alive, by how each actually lived: survival, foraging, energy, age, maturity, births, generation. A vault is its keeper's money on the way out. Fee income ends up with whoever keeps flies that live well.</li>
     </ol>
@@ -110,7 +110,7 @@
     <p class="small dim">pump.fun's schedule as published at the time of writing; the <span class="mono">FeeConfig</span> account of the Pump Fees program is the truth and can change. Nothing in the world depends on these numbers.</p>
   </div>
   <aside class="sec-margin">
-    <div class="mnote"><b>What the operator cannot do</b><br>Change the creator. Stop fees accruing to it. Pull funded money back out of the program into the fee keypair. Give the coin any utility.</div>
+    <div class="mnote"><b>What the operator cannot do</b><br>Change who the fee is paid to. Stop fees accruing. Pull funded money back out of the program into the fee keypair. Give the coin any utility.</div>
     <div class="mnote"><b>What the operator can do, in public</b><br>The program has <span class="mono">withdraw_treasury</span>: the operator may move metabolism or pool to any account. It exists to correct a misfunded world. Every use is a transaction on the World account and the treasuries are shown live on this site; treat any use as something to be explained before it happens. Keepers' vaults and credits are not treasuries and cannot be touched by it.</div>
   </aside>
 </section>

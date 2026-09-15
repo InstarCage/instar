@@ -9,7 +9,7 @@ Paste these into pump.fun. The one field that matters is **creator**.
 | image | `brand/card-1080.png` (or `brand/pfp-1024.png` for a plain roundel) |
 | website | `https://instarcage.com/coin.html` |
 | twitter | `https://x.com/InstarCage` |
-| **creator / fee recipient** | `9nZk5qGRCoFBGfqBJxFRndRmPYpq9fF9ukU89zzyHWNM` |
+| **creator / fee recipient** | `4AVTpKswqAAeneBWysdc1AsiYYoHVZZ6MbV4KSyn7bYi` |
 | holder rewards | **off** |
 | cashback | **off** |
 | Mayhem mode | **off** |
@@ -23,14 +23,20 @@ Why the toggles are off: holder rewards make the `["holder-rewards", mint]` PDA 
 
 If the UI does not let you set a creator other than the connected wallet, connect the fee keypair itself (import `.keys/mainnet/fee.json` into the launch wallet; it holds 0.05 SOL, enough to pay the create transaction ~0.02 SOL, then top it back up), or launch through `create_v2` with `creator` as an argument (docs/COIN.md §1).
 
-## After launch
+## Launched
 
-Send the mint address. Then:
+Mint `7HVsxJsGrcako6PbRof7R2JoUb6Tbzmrz9B5NjwaNQVv`, 2026-09-15 03:23 UTC,
+from pump.fun's site. The site made the coin in the shared shape: the
+curve's creator is the fee-sharing config
+`D8ypWvEChXdisXe2KpGBsHDcrw7zutj5N5vRfUzTGJFb`, whose one shareholder is
+the fee keypair at 100%, admin revoked. The world claims it with
+`distribute_creator_fees` (docs/COIN.md §3); first claim
+`38SVh1TX5jHvrumK5MKGKMRoGQvh3yn18TaYnHTyLbVYjY2Rn4iAhwEbCK3gJWb1DXdKasyAkA8mTsXriEGJjYz7`.
 
 ```
-INSTAR_COIN_MINT=<mint> npm run preflight      # confirms the curve's creator is the fee keypair
-railway variables --set INSTAR_COIN_MINT=<mint> && npm run deploy:railway
-npx tsx scripts/fees.mts status               # vaults, pool, last claim
+INSTAR_COIN_MINT=7HVsxJsGrcako6PbRof7R2JoUb6Tbzmrz9B5NjwaNQVv npm run preflight
+railway variables --set INSTAR_COIN_MINT=7HVsxJsGrcako6PbRof7R2JoUb6Tbzmrz9B5NjwaNQVv && npm run deploy:railway
+npx tsx scripts/fees.mts status               # vaults, shareholders, last claim
 ```
 
-The world then claims creator fees ahead of every ten-minute sweep and funds them into the cage (`fund`, 50/50). The coin page and `/api/config` name the mint automatically; the poster's coin post reads it too.
+The world claims creator fees ahead of every ten-minute sweep and funds them into the cage (`fund`, 50/50). The coin page and `/api/config` name the mint and the payee automatically; the poster's coin post reads it too.

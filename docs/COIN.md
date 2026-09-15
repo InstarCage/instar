@@ -18,40 +18,53 @@ pump's own public docs and IDLs (github.com/pump-fun/pump-public-docs).
 
 There is exactly one line that matters:
 
-> **The `creator` of the coin must be the fee keypair's public key**
-> (`.keys/mainnet/fee.json` from `npm run keys:new`).
+> **Every creator fee of the coin must be paid to the fee keypair's public
+> key** (`.keys/mainnet/fee.json` from `npm run keys:new`).
 
 pump.fun writes `creator` into the bonding curve at launch and, on
 graduation, into the PumpSwap pool as `coin_creator`. Every creator fee the
 coin ever earns is paid to vaults derived from that key. It cannot be
 changed afterwards by us: `set_creator` and `admin_cto` are pump admin
-instructions, and the one creator-controlled option (a fee sharing config,
-§6) is one-shot and irreversible. Get it wrong and the fees go to another
-wallet for the life of the coin. `npm run preflight` with `INSTAR_COIN_MINT`
-set checks it and fails loudly.
+instructions. Get it wrong and the fees go to another wallet for the life
+of the coin. `npm run preflight` with `INSTAR_COIN_MINT` set checks it and
+fails loudly.
 
-Two ways to launch, both fine:
+There are two shapes the claimer accepts, and pump.fun's site produces the
+second:
 
-**pump.fun UI.** Create the coin from any hot wallet. That wallet is the
+**Direct.** The curve's `creator` is the fee keypair itself. This is what
+`create_v2` gives when `creator` is passed as an argument: the Pump program
+`6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P`, instruction `create_v2`
+(discriminator `[214,144,76,236,95,139,49,180]`), arguments `name`,
+`symbol`, `uri`, `creator`, `is_mayhem_mode`, and the optional
+`is_cashback_enabled`, `creator_fee_bps`, `is_holder_reward`. `creator` is
+an **argument**, not a signer: the transaction is signed by the new mint
+keypair and by `user` (the launch wallet, which pays). Pass `creator =
+<fee.json pubkey>`, `is_mayhem_mode = false`, and leave `is_holder_reward`
+unset or `[false]` and `is_cashback_enabled` unset (cashback is deprecated
+and `create_v2` rejects it). pump's TypeScript SDK (`@pump-fun/pump-sdk`,
+`createV2AndBuyInstructions`) takes the creator as a parameter.
+
+**Shared.** The curve's `creator` is the Pump Fees program's
+`["sharing-config", mint]` PDA, a `SharingConfig` account that lists up to
+ten shareholders by basis points. pump.fun's site launches every coin this
+way: the creator fee recipient typed into the form becomes the config's
+sole shareholder at 10,000 bps and the config's admin is revoked in the
+same transaction, so the shares are final. `$INSTAR` on mainnet is this
+shape: sharing config `D8ypWvEChXdisXe2KpGBsHDcrw7zutj5N5vRfUzTGJFb`,
+shareholder `4AVTpKswqAAeneBWysdc1AsiYYoHVZZ6MbV4KSyn7bYi` (the fee
+keypair) at 10,000 bps, admin revoked. The world reads the config on every
+pass and refuses to claim unless the fee keypair is among the shareholders;
+what it receives is its share. A config whose admin is **not** revoked can
+have its shares changed by that admin at any time (`update_fee_shares_v2`);
+preflight warns about it, and `revoke_fee_sharing_authority` is the fix.
+
+With the site: create the coin from any hot wallet. That wallet is the
 launch wallet (it pays, and it holds whatever it buys at launch); it is not
-the creator unless you make it so. Where the form asks for the creator
-fee recipient, or if it defaults to the connected wallet, make it the fee
+the payee unless you make it so. Where the form asks for the creator fee
+recipient, or if it defaults to the connected wallet, make it the fee
 keypair's address. Leave holder rewards **off** and cashback **off**; leave
 Mayhem mode off.
-
-**`create_v2` directly.** The Pump program `6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P`,
-instruction `create_v2` (discriminator `[214,144,76,236,95,139,49,180]`),
-arguments `name`, `symbol`, `uri`, `creator`, `is_mayhem_mode`, and the
-optional `is_cashback_enabled`, `creator_fee_bps`, `is_holder_reward`.
-`creator` is an **argument**, not a signer: the transaction is signed by the
-new mint keypair and by `user` (the launch wallet, which pays). Pass
-`creator = <fee.json pubkey>`, `is_mayhem_mode = false`, and leave
-`is_holder_reward` unset or `[false]` and `is_cashback_enabled` unset
-(cashback is deprecated and `create_v2` rejects it). pump's TypeScript SDK
-(`@pump-fun/pump-sdk`, `createV2AndBuyInstructions`) and its hosted builder
-(`POST https://fun-block.pump.fun/agents/create-coin` with a `creator`
-field) both take the creator as a parameter; either is acceptable as long as
-the field is the fee keypair.
 
 Why holder rewards and cashback are off: a holder-reward coin sets the
 creator to the `["holder-rewards", mint]` PDA permanently, so no creator
@@ -120,14 +133,16 @@ rates: it reads what arrived.
 Where it arrives:
 
 - On the bonding curve, as lamports in the Pump PDA
-  `["creator-vault", creator]`. This vault is per **creator**, not per coin:
-  every coin with the same creator pays into the same vault.
+  `["creator-vault", creator]`, where `creator` is the curve's creator: the
+  fee keypair in the direct shape, the sharing config in the shared one.
+  This vault is per **creator**, not per coin: every coin with the same
+  creator pays into the same vault.
 - After graduation, as wrapped SOL in the token account owned by the Pump AMM
-  PDA `["creator_vault", creator]` (underscore). Only the **canonical**
-  PumpSwap pool pays creator fees: the one pump's `migrate` creates, whose
-  `creator` is Pump's `["pool-authority", mint]` PDA. Coins that migrated to
-  Raydium before PumpSwap existed, and any other pool of the same mint, pay
-  the creator nothing.
+  PDA `["creator_vault", creator]` (underscore), same `creator`. Only the
+  **canonical** PumpSwap pool pays creator fees: the one pump's `migrate`
+  creates, whose `creator` is Pump's `["pool-authority", mint]` PDA. Coins
+  that migrated to Raydium before PumpSwap existed, and any other pool of
+  the same mint, pay the creator nothing.
 
 Both vaults keep a rent-exempt floor that is never claimable: the minimum
 balance of an empty account, which the world reads from the RPC at runtime
@@ -139,36 +154,46 @@ whatever it reads.
 
 ## 3. How the world claims them
 
-Both claims are **permissionless**: the creator is a writable account, not a
-signer, so anyone may crank them and the proceeds still go to the creator.
-The world does it itself, from the fee keypair, ahead of every ten-minute
-sweep (`services/chain/fees.mts`, called from `services/world/index.mts`):
+Every claim is **permissionless**: the creator is a writable account, not a
+signer, so anyone may crank them and the proceeds still go where the coin
+says. The world does it itself, from the fee keypair, ahead of every
+ten-minute sweep (`services/chain/fees.mts`, called from
+`services/world/index.mts`):
 
-1. Read the bonding curve, both vaults, the canonical pool, the sharing
-   config address, the fee keypair's wSOL account and its balance in one
-   batched account read (plus the rent minimums, fetched once).
-2. Refuse, with the reason in the log, if the coin's creator is not the fee
-   keypair, if it is a holder-reward coin, if it is not quoted in SOL, or if
-   a sharing config exists (§6). None of these are retried into; they are
-   configuration errors. A problem with the PumpSwap pool alone (its
-   `coin_creator` is someone else, which only pump admin can arrange) blocks
-   only the PumpSwap leg; the curve vault is a separate account and is still
-   claimed.
-3. If the curve vault holds more than 0.001 SOL above rent: one transaction,
-   Pump `collect_creator_fee_v2`, moving the lamports to the fee keypair.
+1. Read the bonding curve, the canonical pool, the sharing config, both
+   vaults of both shapes, the fee keypair's wSOL account and its balance in
+   one batched account read (plus the rent minimums, fetched once). The
+   curve's `creator` says which shape the coin is.
+2. Refuse, with the reason in the log, if the coin's creator is neither the
+   fee keypair nor a sharing config that lists it, if the config is paused,
+   if it is a holder-reward coin, or if it is not quoted in SOL. None of
+   these are retried into; they are configuration errors. A problem with
+   the PumpSwap pool alone (its `coin_creator` is someone else, which only
+   pump admin can arrange) blocks only the PumpSwap leg; the curve vault is
+   a separate account and is still claimed.
+3. If the curve vault holds more than 0.001 SOL above rent: one
+   transaction. Direct shape: Pump `collect_creator_fee_v2`, moving the
+   lamports to the fee keypair. Shared shape: Pump `distribute_creator_fees`
+   with the shareholders as remaining accounts in the config's order,
+   paying each its share (the program's own minimum is the vault's rent
+   floor, below the world's threshold).
 4. If the coin has graduated, the AMM vault account exists and holds more
-   than 0.001 SOL of wSOL: one transaction of three instructions, create the
-   fee keypair's wSOL account if missing (idempotent), Pump AMM
-   `collect_coin_creator_fee` into it, SPL Token `closeAccount` back into the
-   fee keypair. The close is the only step that needs the fee keypair's
-   signature, which is why the claimer refuses to run for any other creator.
+   than 0.001 SOL of wSOL: one transaction. Direct shape, three
+   instructions: create the fee keypair's wSOL account if missing
+   (idempotent), Pump AMM `collect_coin_creator_fee` into it, SPL Token
+   `closeAccount` back into the fee keypair; the close is the only step that
+   needs the fee keypair's signature. Shared shape, two instructions: Pump
+   AMM `transfer_creator_fees_to_pump`, which unwraps the AMM vault into
+   the curve vault of the same creator, then `distribute_creator_fees` as
+   above; nothing signs but the payer.
 5. Otherwise, if the fee keypair's wSOL account exists with anything in it
-   (the AMM claim is permissionless and always pays that account, so a claim
-   cranked by anyone else leaves wSOL there): one transaction, the close
-   alone, which brings the wSOL and the account's rent into the fee keypair.
+   (the direct AMM claim is permissionless and always pays that account, so
+   a claim cranked by anyone else leaves wSOL there): one transaction, the
+   close alone, which brings the wSOL and the account's rent into the fee
+   keypair.
 6. A leg the fee keypair cannot pay for (its own rent floor, the fee, and
-   for the PumpSwap leg the wSOL account's rent) is skipped with the line
-   quoted in §1 instead of failing in simulation.
+   for the direct PumpSwap leg the wSOL account's rent) is skipped with the
+   line quoted in §1 instead of failing in simulation.
 7. Every transaction carries a compute limit and priority fee, is confirmed
    against the blockhash it was signed with, and on an expired blockhash is
    resent only after re-reading the vault: a claim that already landed is
@@ -183,12 +208,17 @@ Then the existing sweep runs: everything in the fee keypair above rent and
 logged and the sweep still runs on whatever is already there; the next
 interval tries again. Every read is bounded by a 30-second timeout, and a
 pass still running when the next interval comes round is logged, not
-silently waited for. Nothing here can stop the world.
+silently waited for. Nothing here can stop the world. What the chain said
+at the last pass (shape, payees, problems) is published on `/api/config`
+as `coin.fees`, and `coin.html` shows it.
 
 By hand, the same code: `npx tsx scripts/fees.mts status` shows the curve,
-the pool, both vaults and the last claim; `claim --dry-run` prints every
-account of every transaction with its flags and the discriminator and
-simulates them without sending; `claim --yes` sends.
+the sharing config and its shareholders, the pool, both vaults and the last
+claim; `claim --dry-run` prints every account of every transaction with its
+flags and the discriminator and simulates them without sending; `claim
+--yes` sends. The first mainnet claim, 0.9717 SOL by
+`distribute_creator_fees`, is
+`38SVh1TX5jHvrumK5MKGKMRoGQvh3yn18TaYnHTyLbVYjY2Rn4iAhwEbCK3gJWb1DXdKasyAkA8mTsXriEGJjYz7`.
 
 ## 4. How they enter the cage
 
@@ -230,18 +260,19 @@ Keep it as guarded as the operator key.
 The operator cannot change the coin's creator, stop the fees from accruing
 to it, or turn the coin into anything more than it is.
 
-## 6. The sharing-config caveat
+## 6. The sharing config, and what it could become
 
-The Pump Fees program lets the current creator call
-`create_fee_sharing_config` for a coin, after which the creator recorded on
-the bonding curve and pool becomes the `["sharing-config", mint]` PDA and
-fees are paid out by `distribute_creator_fees_v2` to up to ten shareholders
-by basis points, set once with `update_fee_shares_v2` and never editable
-again. The plain claims in §3 are rejected for such a coin. The world does
-not implement the distribute path: `status` reports the sharing config and
-the claimer refuses. Do not create one. If a split were ever wanted (say, to
-a burn address), it is a one-shot, irreversible decision that should be
-made in public and would need the distribute path built first.
+The sharing config is pump-fees' way of splitting a coin's creator fees:
+up to ten shareholders by basis points, and a `distribute` instead of a
+`collect`. The world handles it (§3) because pump.fun's site gives every
+coin one. What matters is its **admin**: while the admin is not revoked it
+may rewrite the shares with `update_fee_shares_v2` (or hand the role on with
+`transfer_fee_sharing_authority`), and every fee from then on follows the
+new list. `$INSTAR`'s admin was revoked at launch, so its one shareholder,
+the fee keypair, is final; `fees.mts status` and preflight both say whether
+that is still so. Were a split ever wanted on a coin whose admin is not yet
+revoked (say, to a burn address), it is a decision to be made in public
+before the instruction is sent, and revoked afterwards.
 
 ## 7. Alternatives, and why not
 
