@@ -93,6 +93,15 @@ const cards = [
   // the coin launch: the whole flow of a fee, and every address a reader
   // would want to look up, on one card
   card("launch", `${head("$INSTAR is live", "A coin whose only job is to feed the cage.")}<div class="cols two"><div><div class="steps"><div><b>01 Trade</b>every trade of $INSTAR on pump.fun pays a creator fee</div><div><b>02 Claim</b>the world claims it into the fee keypair every ten minutes, permissionlessly</div><div><b>03 Fund</b>everything above a small gas reserve goes into the World account: half metabolism, half pool</div><div><b>04 Cage</b>metabolism sets how many flies can live (8 + 20 per SOL, up to 40); the pool pays the living flies every eighth epoch</div></div><p class="note">No governance, no access, no share of any fly. The operator cannot pull funded money back out. Every claim and every fund is a public transaction.</p></div><div>${table([["coin", "$INSTAR, pump.fun"], ["creator (fee keypair)", cfg.coin && cfg.coin.creator ? cfg.coin.creator : "—"], ["program", journal.programId], ["World account", journal.worldPda], ["collection", cfg.collection || "—"], ["cluster", journal.cluster], ["right now", `${alive} flies alive of ${journal.capacity}; ${births} born; ${epochs.length} epochs posted, ${v ? (v.epochs || []).length : 0} verified`]])}</div></div>`, "dense"),
+
+  // after launch: what the coin has already done to the cage, all of it
+  // from the journal (the capacity history is its `cap` entries)
+  card("launched", (() => {
+    const caps = (journal.entries || []).filter(e => e.type === "cap").map(e => e.value);
+    const sweeps = (journal.txlog || []).filter(t => t.kind === "fees" && t.ok !== false).length;
+    const mint = cfg.coin && cfg.coin.mint ? cfg.coin.mint : "—";
+    return `${head("$INSTAR, live on pump.fun", "The first fees are in the cage.")}<div class="grid3 big"><div class="m"><div class="v">${journal.capacity}</div><div class="k">flies the cage can hold now</div><div class="h">${caps.length ? `was ${caps[0]} at genesis` : ""}</div></div><div class="m"><div class="v">${sol(journal.metabolism)}<small>SOL</small></div><div class="k">metabolism</div><div class="h">sets capacity: 8 + 20 per SOL</div></div><div class="m"><div class="v">${sol(journal.pool)}<small>SOL</small></div><div class="k">pool</div><div class="h">pays the living flies every eighth epoch</div></div><div class="m"><div class="v">${sweeps}</div><div class="k">fee sweeps into the cage</div><div class="h">half metabolism, half pool</div></div><div class="m"><div class="v">${alive}</div><div class="k">flies alive</div><div class="h">${births} born on chain</div></div><div class="m"><div class="v">${epochs.length}</div><div class="k">epochs posted</div><div class="h">${v ? (v.epochs || []).length : 0} verified by replay</div></div></div><p class="note">mint ${mint} · creator fees claimed by the world every ten minutes, permissionlessly, and funded into the World account · no governance, no access, no share of any fly</p>`;
+  })()),
 ];
 
 const css = `
