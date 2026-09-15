@@ -63,6 +63,26 @@ export function sol(v, places = 4) {
   return n.toFixed(places).replace(/\.?0+$/, "");
 }
 export const price = (v) => sol(v, 9);
+// A newborn's offer, as the program prices it (`offer_price`): the opening
+// price `salePrice` holds for offerHoldSecs from `listedAt`, then falls
+// linearly over offerDecaySecs to offerFloorBps of it. `at` is unix seconds;
+// an offer without a `listedAt` predates the curve and is flat. Returns a
+// lamport string, like the fields it reads.
+export function offerPrice(rec, eco, at = Date.now() / 1000) {
+  const start = BigInt(rec.salePrice || 0);
+  const opened = Number(rec.listedAt || 0);
+  if (!eco || !opened || !eco.offerDecaySecs) return start.toString();
+  const floor = start * BigInt(eco.offerFloorBps) / 10000n;
+  const elapsed = Math.floor(at) - opened - Number(eco.offerHoldSecs);
+  if (elapsed <= 0) return start.toString();
+  if (elapsed >= Number(eco.offerDecaySecs)) return floor.toString();
+  return (start - (start - floor) * BigInt(elapsed) / BigInt(eco.offerDecaySecs)).toString();
+}
+// What a buyer states as the most they will pay: the curve as it stood a
+// little earlier, so a chain clock that trails the browser's by a few
+// seconds (a higher price on chain) cannot refuse the purchase. The program
+// charges the current price, never the stated one.
+export const offerCeiling = (rec, eco) => offerPrice(rec, eco, Date.now() / 1000 - 30);
 export const short = (s, n = 4) => s ? `${s.slice(0, n)}\u2026${s.slice(-n)}` : "";
 export const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 export const fmt = (n) => Number(n || 0).toLocaleString("en-US");

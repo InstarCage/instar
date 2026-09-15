@@ -6,7 +6,7 @@ import { Stream } from "./stream.js";
 import { Cage3D } from "./cage3d.js";
 import { mountBrainPanel } from "./brainmap.js";
 import { drawQR } from "./qr.js";
-import { session, setSession, post, explorerLink, sol, price, short, esc, fmt, STATUS, STATUS_NAME, LAMPORTS } from "./api.js";
+import { session, setSession, post, explorerLink, sol, price, short, esc, fmt, STATUS, STATUS_NAME, LAMPORTS, offerPrice, offerCeiling } from "./api.js";
 import { Program, loadIdl, identityDrift, rememberIdentity } from "./chain.js";
 import { wallets, onWallets } from "./wallet.js";
 
@@ -251,8 +251,11 @@ const SURFACE_NAME = ["floor", "west wall", "east wall", "north wall", "south wa
   }
   const idBtn = (id) => `<button class="id" data-sel="${id}" aria-label="inspect fly ${id}">#${id}</button>`;
   const buyBtn = (l, kind, label) => `<button data-${kind}="${l.id}" data-price="${esc(l.salePrice)}">${label}</button>`;
+  /// what a newborn costs this second; the offer opened at `salePrice` and falls by the program's curve
+  const cur = (l) => l.status === STATUS.OFFERED ? offerPrice(l, config.economy) : l.salePrice;
+  const falling = (l) => l.status === STATUS.OFFERED && String(cur(l)) !== String(l.salePrice) ? ` <span class="faint">was ${price(l.salePrice)}</span>` : "";
   function row(l) {
-    const p = l.status === STATUS.OFFERED || Number(l.salePrice) > 0 ? `${price(l.salePrice)} SOL` : "";
+    const p = l.status === STATUS.OFFERED || Number(l.salePrice) > 0 ? `${price(cur(l))} SOL` : "";
     return `<div class="row">${idBtn(l.id)}<span class="g">gen ${l.generation}${hasParent(l) ? ` of #${l.parentId}` : ""} \u00b7 ${l.status === STATUS.DEAD ? "settled" : "vault " + sol(l.vault)}${statusBadge(l)}</span><span class="v">${p}</span></div>`;
   }
   function renderMarket() {
@@ -264,7 +267,7 @@ const SURFACE_NAME = ["floor", "west wall", "east wall", "north wall", "south wa
     setHud("m-settling", live.settling === false ? "paused: operator out of gas" : `running${live.pendingOps ? `, ${live.pendingOps} pending` : ""}`);
     const offers = records().filter(l => l.status === STATUS.OFFERED);
     setHtml("m-offers", offers.length
-      ? offers.map(l => `<div class="row">${idBtn(l.id)}<span class="g">gen ${l.generation}</span><span class="v">${price(l.salePrice)} SOL</span>${buyBtn(l, "buy", "Buy")}</div>`).join("")
+      ? offers.map(l => `<div class="row">${idBtn(l.id)}<span class="g">gen ${l.generation}${falling(l)}</span><span class="v">${price(cur(l))} SOL</span>${buyBtn(l, "buy", "Buy")}</div>`).join("")
       : `<div class="note">no newborn is offered right now; the next birth will be</div>`);
     const resale = records().filter(l => l.status === STATUS.OWNED && Number(l.salePrice) > 0);
     setHtml("m-resale", resale.length
@@ -309,7 +312,8 @@ const SURFACE_NAME = ["floor", "west wall", "east wall", "north wall", "south wa
     const sel = ev.target.closest("[data-sel]");
     if (sel) { selectUid(+sel.dataset.sel, sel); return; }
     const buy = ev.target.closest("[data-buy]");
-    if (buy) { act("buy", { id: +buy.dataset.buy, lamports: buy.dataset.price }, `bought #${buy.dataset.buy}`, buy); return; }
+    // the ceiling is stated at the click, not at the render: the program charges the offer's price now
+    if (buy) { const rec = flyOf(+buy.dataset.buy); act("buy", { id: +buy.dataset.buy, lamports: rec ? offerCeiling(rec, config.economy) : buy.dataset.price }, `bought #${buy.dataset.buy}`, buy); return; }
     const bl = ev.target.closest("[data-buylisted]");
     if (bl) { act("buylisted", { id: +bl.dataset.buylisted, lamports: bl.dataset.price }, `bought #${bl.dataset.buylisted}`, bl); return; }
     const a = ev.target.closest("[data-act]");
@@ -449,17 +453,17 @@ const SURFACE_NAME = ["floor", "west wall", "east wall", "north wall", "south wa
         (rec.genomeHash ? `<span>genome</span><span>${esc(String(rec.genomeHash))}</span>` : "") +
         `<span>vault</span><span>${sol(rec.vault)} SOL</span>` +
         `<span>status</span><span>${STATUS_NAME[rec.status]}${rec.pendingCull ? ", cull requested" : ""}</span>` +
-        (Number(rec.salePrice) > 0 ? `<span>price</span><span>${price(rec.salePrice)} SOL</span>` : "")
+      (Number(rec.salePrice) > 0 ? `<span>price</span><span>${price(cur(rec))} SOL${falling(rec) ? `, opened at ${price(rec.salePrice)}` : ""}</span>` : "")
         : `<span>chain</span><span>registration pending</span>`));
     const art = $("i-art");
     { const s = `${API}/api/fly/${uid}.svg`; if (art.getAttribute("src") !== s) art.src = s; art.hidden = false; }
     const mine = rec && rec.keeper === myAddr() && rec.status === STATUS.OWNED;
-    const key = rec ? `${uid}:${rec.status}:${rec.salePrice}:${rec.pendingCull}:${mine}:${acctMode}` : `${uid}:none`;
+    const key = rec ? `${uid}:${rec.status}:${cur(rec)}:${rec.pendingCull}:${mine}:${acctMode}` : `${uid}:none`;
     if (!force && key === inspKey) return;
     inspKey = key;
     let actions = "";
     if (rec) {
-      if (rec.status === STATUS.OFFERED) actions = buyBtn(rec, "buy", `Buy for ${price(rec.salePrice)} SOL`);
+      if (rec.status === STATUS.OFFERED) actions = buyBtn(rec, "buy", `Buy for ${price(cur(rec))} SOL`);
       else if (rec.status === STATUS.OWNED && Number(rec.salePrice) > 0 && !mine) actions = buyBtn(rec, "buylisted", `Buy for ${price(rec.salePrice)} SOL`);
       else if (mine) {
         // Naming is a journal claim the world verifies against the custodial

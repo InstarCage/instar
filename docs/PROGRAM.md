@@ -92,7 +92,7 @@ after escheat:
 | listed_by         | Pubkey   | who listed the fly for resale; default when not listed |
 | listed_at         | i64      | when; a listing expires LISTING_MAX_AGE later          |
 | vault             | u64      | lamports the fly holds, backed by World              |
-| sale_price        | u64      | OFFERED: primary price; OWNED: resale price, 0 = not listed |
+| sale_price        | u64      | OFFERED: opening price (`offer_price` gives the current one); OWNED: resale price, 0 = not listed |
 | status            | u8       | 1 OFFERED, 2 OWNED, 3 WILD, 4 DEAD (0 never on chain)  |
 | pending_cull, cull_requested_at | bool, i64 |                                         |
 | bump              | u8       |                                                        |
@@ -208,8 +208,8 @@ is the asset's current owner; instructions that touch the asset also take
 | `heartbeat()` | operator | refreshes `last_operator_action` |
 | `post_epoch(epoch, tick, hash)` | operator | `epoch == last_epoch + 1`, `tick > last_epoch_tick` |
 | `register_birth(id, parent_id, generation, birth_tick, genome_hash, uri)` | operator (pays rent) | `id == next_id`; WILD; creates the Core asset (`asset` is a fresh keypair signer) owned by the World PDA; not in wind-down |
-| `open_offer(id, price)` | operator | WILD, or OWNED with the asset back in the World PDA's hands (a keeper sent it to the cage natively), to OFFERED; clears any listing; not in wind-down |
-| `buy(id, price)` | buyer | OFFERED and the asset still the World PDA's; `price` must equal `sale_price`; the `parent` account is required whenever `parent_id` is set; 60% vault, 15% metabolism, 15% pool, 10% to the parent's vault if the parent is OWNED, else pool; the asset moves to the buyer, OWNED; not in wind-down |
+| `open_offer(id, price)` | operator | WILD, or OWNED with the asset back in the World PDA's hands (a keeper sent it to the cage natively), to OFFERED at opening price `price` > 0; clears any listing and stamps `listed_at` as the offer's start; not in wind-down |
+| `buy(id, price)` | buyer | OFFERED and the asset still the World PDA's; the current price is `offer_price(sale_price, listed_at, now)` (holds OFFER_HOLD_SECS = 5 min, then falls over OFFER_DECAY_SECS = 20 min to OFFER_FLOOR_BPS = 25%; flat when `listed_at` is 0) and `price` must be at least it, the buyer being charged the current price; the `parent` account is required whenever `parent_id` is set; 60% vault, 15% metabolism, 15% pool, 10% to the parent's vault if the parent is OWNED, else pool; the asset moves to the buyer, OWNED; not in wind-down |
 | `list(id, price)` | keeper | OWNED and no pending cull; price > 0; records `listed_by` and `listed_at` |
 | `unlist(id)` | keeper or `listed_by` | clears the listing |
 | `buy_listed(id, price)` | buyer | `sale_price > 0`, the asset still `listed_by`'s and the listing younger than LISTING_MAX_AGE, else NotForSale; 90% to `listed_by`'s credit (`seller_credit`, derived from the record), 5% metabolism, 5% pool; the vault travels with the fly; the asset moves to the buyer through the transfer delegate; refused for a pending cull and in wind-down |

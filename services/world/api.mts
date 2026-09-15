@@ -51,7 +51,10 @@ export type WorldContext = {
   publicUrl: string;
   /// INSTAR_PUBLIC_RPC: the endpoint the site hands to browsers
   publicRpc: string;
-  economy: { offerBase: string; offerPerGen: string; founderPremium: number; rewardEveryEpochs: number; poolPayoutBps: number; sweepIntervalMs: number; sweepPoolBps: number; metabolismFull: string; gasReserve: string };
+  economy: {
+    offerBase: string; offerPerGen: string; founderPremium: number; offerHoldSecs: number; offerDecaySecs: number; offerFloorBps: number;
+    rewardEveryEpochs: number; poolPayoutBps: number; sweepIntervalMs: number; sweepPoolBps: number; metabolismFull: string; gasReserve: string;
+  };
   corsOrigin: string;
   siteDir: string;
   rootDir: string;

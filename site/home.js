@@ -4,7 +4,7 @@
 import { boot, fetchJournal, verifierLine, fillConstants, API } from "./engine.js";
 import { Stream } from "./stream.js";
 import { Cage3D } from "./cage3d.js";
-import { explorerLink, sol, price, short, esc, fmt, STATUS, STATUS_NAME } from "./api.js";
+import { explorerLink, sol, price, short, esc, fmt, STATUS, STATUS_NAME, offerPrice } from "./api.js";
 
 const $ = (id) => document.getElementById(id);
 const setText = (id, v) => { const el = $(id); if (el && el.textContent !== String(v)) el.textContent = String(v); };
@@ -91,14 +91,15 @@ const SURFACE_NAME = ["the floor", "the west wall", "the east wall", "the north 
     setText("ec-cap", live.capacity);
     setText("ec-alive", (live.flies || []).filter(l => l.status !== STATUS.DEAD).length);
     setText("ec-settling", live.settling === false ? "paused: operator out of gas" : `running${live.pendingOps ? `, ${live.pendingOps} pending` : ""}`);
-    const offers = (live.flies || []).filter(l => l.status === STATUS.OFFERED).sort((a, b) => (BigInt(a.salePrice) < BigInt(b.salePrice) ? -1 : BigInt(a.salePrice) > BigInt(b.salePrice) ? 1 : a.id - b.id));
+    const eco = config.economy;
+    const cur = (l) => offerPrice(l, eco);
+    const offers = (live.flies || []).filter(l => l.status === STATUS.OFFERED).sort((a, b) => (BigInt(cur(a)) < BigInt(cur(b)) ? -1 : BigInt(cur(a)) > BigInt(cur(b)) ? 1 : a.id - b.id));
     setHtml("offers-table", `<tbody>${offers.length
-      ? offers.slice(0, 8).map(l => `<tr><td><a href="./cage.html#fly=${l.id}">#${l.id}</a></td><td>gen ${l.generation}</td><td class="n">${price(l.salePrice)} SOL</td></tr>`).join("")
+      ? offers.slice(0, 8).map(l => `<tr><td><a href="./cage.html#fly=${l.id}">#${l.id}</a></td><td>gen ${l.generation}</td><td class="n">${price(cur(l))} SOL${String(cur(l)) !== String(l.salePrice) ? ` <span class="faint">(opened at ${price(l.salePrice)})</span>` : ""}</td></tr>`).join("")
       : `<tr><td class="faint">no newborn is offered right now; the next birth will be</td></tr>`}</tbody>`);
     const cheapest = offers[0] || null;
-    const eco = config.economy;
-    const rule = eco ? `${sol(eco.offerBase)} SOL plus ${sol(eco.offerPerGen)} per generation` : "";
-    setText("own-price", cheapest ? `${price(cheapest.salePrice)} SOL right now (${rule})` : rule || "\u2014");
+    const rule = eco ? `opens at ${sol(eco.offerBase)} SOL plus ${sol(eco.offerPerGen)} per generation, holds ${Math.round(eco.offerHoldSecs / 60)} minutes, then falls over ${Math.round(eco.offerDecaySecs / 60)} minutes to ${eco.offerFloorBps / 100}% of that` : "";
+    setText("own-price", cheapest ? `${price(cur(cheapest))} SOL right now (${rule})` : rule || "\u2014");
     // the deposit address on devnet takes test SOL only; real SOL sent there is lost to the world
     const oc = document.getElementById("own-cluster");
     if (oc) { oc.hidden = live.cluster === "mainnet-beta"; oc.textContent = `This world runs on ${live.cluster}: the SOL is test SOL, free from the Airdrop button in the cage's Account window. Do not send real SOL to a devnet address.`; }

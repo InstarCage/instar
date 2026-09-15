@@ -31,17 +31,22 @@ pub struct Buy<'info> {
     pub system_program: Program<'info, System>,
 }
 
-/// Buy a newborn. Most of the price is seeded into the fly itself and a
-/// tenth goes to its parent if the parent is still kept; otherwise the pool
-/// keeps that share rather than it being stranded. The buyer states the price
-/// they saw so an offer changed under them cannot charge more. The asset
-/// moves from the World PDA to the buyer.
+/// Buy a newborn at the offer's current price (`offer_price`: the opening
+/// price, then a fall to a quarter of it). Most of the price is seeded into
+/// the fly itself and a tenth goes to its parent if the parent is still
+/// kept; otherwise the pool keeps that share rather than it being stranded.
+/// The buyer states the price they saw, which is the most they pay: the
+/// curve only falls, so a fresher price is never above it, and an offer
+/// re-opened higher under them is refused. The asset moves from the World
+/// PDA to the buyer.
 pub fn buy(ctx: Context<Buy>, _id: u64, price: u64) -> Result<()> {
     require!(!ctx.accounts.world.wind_down, InstarError::WindingDown);
     let c = &mut ctx.accounts.creature;
     require!(c.status == STATUS_OFFERED, InstarError::NotForSale);
     require_keys_eq!(ctx.accounts.asset.owner, ctx.accounts.world.key(), InstarError::NotForSale);
-    require!(price == c.sale_price, InstarError::WrongPrice);
+    let current = offer_price(c.sale_price, c.listed_at, Clock::get()?.unix_timestamp)?;
+    require!(price >= current, InstarError::WrongPrice);
+    let price = current;
     // A fly with a parent must be bought with that parent's record in hand,
     // or a raw client could route the ancestry royalty away from a kept parent.
     require!(c.parent_id == NO_PARENT || ctx.accounts.parent.is_some(), InstarError::WrongId);

@@ -116,8 +116,8 @@
     <h2>A fly's life, and where the money goes.</h2>
     <p class="lead">Every SOL that enters the cage stays in the cage until a rule pays it out. The program on Solana keeps the ledger. One instruction lets the operator move the cage's treasuries (not your vault or credit); every use of it is a public transaction on the World account, and this site shows the treasuries live.</p>
     <ol class="steps">
-      <li><b>Born.</b> Two flies with enough energy and the neurosecretory gate open produce a child: its brain is a crossover of its parents' connection weights with a few mutations. The newborn is minted and put on offer at a price that rises with its generation.</li>
-      <li><b>Bought.</b> You pay the price. 60% goes into the fly's own <b>vault</b>, 15% into the cage's <b>metabolism</b> (which sets how many flies the cage can hold), 15% into the <b>pool</b>, and 10% to its parent's vault.</li>
+      <li><b>Born.</b> Two flies with enough energy and the neurosecretory gate open produce a child: its brain is a crossover of its parents' connection weights with a few mutations. The newborn is minted and put on offer at a price that rises with its generation, holds for <span data-n="offerHoldMinutes">&mdash;</span> minutes, then falls over <span data-n="offerDecayMinutes">&mdash;</span> minutes to <span data-n="offerFloorPct">&mdash;</span>% of it, where it stays until someone buys.</li>
+      <li><b>Bought.</b> You pay the offer's price at that moment, never more than the one you saw. 60% goes into the fly's own <b>vault</b>, 15% into the cage's <b>metabolism</b> (which sets how many flies the cage can hold), 15% into the <b>pool</b>, and 10% to its parent's vault.</li>
       <li><b>Lives.</b> Every <span data-n="rewardEveryEpochs">&mdash;</span> epochs (<span data-n="rewardMinutes">&mdash;</span> minutes) a quarter of the pool is shared among the living flies by points: being alive, foraging, energy, age, reaching maturity, births, generation. The share lands in each fly's vault, so a lineage that does well grows richer while it lives.</li>
       <li><b>Dies.</b> Starved, exhausted in flight, drowned, old age. The NFT burns. The vault is paid out: 40% split among its living children, 10% credited to you, 35% back to metabolism, 15% to the pool. You can withdraw your credit at any time.</li>
     </ol>
@@ -153,7 +153,7 @@
     <h2>How to own one.</h2>
     <ol class="steps">
       <li><b>Open <a href="./cage.html">the cage</a> and pick a way in.</b> <i>Instar account</i>: a name and a PIN; the world holds a Solana keypair for you (sealed under its master key; the PIN only signs you in), and you can withdraw everything to any address whenever you like. <i>Your wallet</i>: connect Phantom, Solflare or any Solana wallet; the page builds each transaction and your wallet signs it, and the world never sees your key. Google sign-in is available where the operator has enabled it.</li>
-      <li><b>Put in a little SOL.</b> An Instar account shows a deposit address and a QR code. A newborn costs <span id="own-price">&mdash;</span>; the price rises by generation, and a founder (generation 0) costs double. <span id="own-cluster" class="warn" hidden></span></li>
+      <li><b>Put in a little SOL.</b> An Instar account shows a deposit address and a QR code. A newborn costs <span id="own-price">&mdash;</span>; the price rises by generation, and a founder (generation 0) costs double. Wait and it gets cheaper; wait too long and someone else has it. <span id="own-cluster" class="warn" hidden></span></li>
       <li><b>Buy a newborn from the Market window.</b> It is minted to your wallet as a Core NFT in the Instar collection; holding the asset is what makes you its keeper. From the <i>Mine</i> window you can list it for resale, transfer it, cull it, and withdraw what you are owed; with an Instar account you can also name its lineage.</li>
     </ol>
     <div class="split">

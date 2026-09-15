@@ -19,6 +19,15 @@ echo "deployer:   $(solana-keygen pubkey "$DEPLOYER") ($(solana balance --url "$
 # A failed attempt leaves a buffer account holding the program's rent: close
 # any such buffers of ours first so the SOL is back before we try again.
 solana program close --buffers --url "$RPC" --keypair "$DEPLOYER" --recipient "$(solana-keygen pubkey "$DEPLOYER")" 2>/dev/null || true
+# An upgrade larger than the space the program was first deployed with needs
+# the program account extended first (rent for the extra bytes, paid once).
+# 8 KB of headroom so the next small growth needs nothing.
+have="$(solana program show "$PROGRAM_ID" --url "$RPC" 2>/dev/null | awk '/Data Length/ {print $3}')"
+need="$(stat -c %s target/deploy/instar.so)"
+if [ -n "$have" ] && [ "$need" -gt "$have" ]; then
+  echo "program data holds $have bytes, the artifact is $need: extending by $((need - have + 8192))"
+  solana program extend "$PROGRAM_ID" $((need - have + 8192)) --url "$RPC" --keypair "$DEPLOYER"
+fi
 solana program deploy \
   --url "$RPC" --keypair "$DEPLOYER" \
   --program-id target/deploy/instar-keypair.json \

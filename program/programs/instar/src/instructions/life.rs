@@ -93,18 +93,22 @@ pub struct OperatorOnCreature<'info> {
     pub asset: Account<'info, LarvaAsset>,
 }
 
-/// Put a fly the dish holds up for sale at a fixed price: a newborn, or a
-/// kept fly whose keeper sent the asset back to the World PDA with a plain
-/// Core transfer. Either way the asset must be the World PDA's; a fly in a
-/// keeper's hands is sold by `list`, never by the operator.
+/// Put a fly the dish holds up for sale: a newborn, or a kept fly whose
+/// keeper sent the asset back to the World PDA with a plain Core transfer.
+/// Either way the asset must be the World PDA's; a fly in a keeper's hands
+/// is sold by `list`, never by the operator. `price` opens a Dutch offer
+/// (`offer_price`): it holds, then falls to a quarter, from `listed_at`,
+/// which for an OFFERED fly is the moment the offer opened.
 pub fn open_offer(ctx: Context<OperatorOnCreature>, _id: u64, price: u64) -> Result<()> {
     require!(!ctx.accounts.world.wind_down, InstarError::WindingDown);
+    require!(price > 0, InstarError::WrongPrice);
     let c = &mut ctx.accounts.creature;
     require!(c.status == STATUS_WILD || c.status == STATUS_OWNED, InstarError::WrongStatus);
     require_keys_eq!(ctx.accounts.asset.owner, ctx.accounts.world.key(), InstarError::WrongStatus);
     c.status = STATUS_OFFERED;
     c.clear_listing();
     c.sale_price = price;
+    c.listed_at = Clock::get()?.unix_timestamp;
     ctx.accounts.world.touch()
 }
 

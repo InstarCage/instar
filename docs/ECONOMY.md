@@ -24,8 +24,14 @@ moment, so list and keep flies only in wallets you can sign with; an asset
 parked in a marketplace escrow at the moment of death forfeits the keeper's
 share to metabolism.
 
-A newborn is offered at `0.005 SOL + 0.001 SOL × generation` (founders at
-twice the base). Buying it splits the price:
+A newborn is offered at `0.05 SOL + 0.01 SOL × generation` (founders at
+twice the base). The offer is Dutch (`offer_price` in the program's
+`state.rs`): the opening price holds for 5 minutes, then falls linearly
+over 20 minutes to 25% of it, where it stays until bought. The buyer states
+the price they saw as the most they will pay and is charged the price of
+the moment; the world and the site quote the curve from the constants the
+world publishes on `/api/config` (`offerHoldSecs`, `offerDecaySecs`,
+`offerFloorBps`). Buying it splits the price:
 
 | share | goes to | why |
 |---|---|---|

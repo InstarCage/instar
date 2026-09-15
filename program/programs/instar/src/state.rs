@@ -55,6 +55,38 @@ pub const CULL_TIMEOUT: i64 = 7 * 86_400;
 /// a fly that has since kept earning. After this long it has to be made again.
 #[cfg(not(feature = "short-timers"))]
 pub const LISTING_MAX_AGE: i64 = 30 * 86_400;
+/// A newborn's offer is a Dutch offer: the opening price holds for
+/// OFFER_HOLD_SECS, then falls linearly over OFFER_DECAY_SECS to
+/// OFFER_FLOOR_BPS of it, where it stays until bought. `offer_price` is the
+/// one place the curve lives; the world and the site quote it from the
+/// constants published on /api/config.
+#[cfg(not(feature = "short-timers"))]
+pub const OFFER_HOLD_SECS: i64 = 5 * 60;
+#[cfg(not(feature = "short-timers"))]
+pub const OFFER_DECAY_SECS: i64 = 20 * 60;
+pub const OFFER_FLOOR_BPS: u64 = 2500;
+
+pub fn offer_price(start: u64, offered_at: i64, now: i64) -> Result<u64> {
+    // an offer opened before the curve existed carries no opening time and
+    // stays at its flat price
+    if offered_at == 0 {
+        return Ok(start);
+    }
+    let floor = crate::money::bps(start, OFFER_FLOOR_BPS)?;
+    let elapsed = now.saturating_sub(offered_at).saturating_sub(OFFER_HOLD_SECS);
+    if elapsed <= 0 {
+        return Ok(start);
+    }
+    if elapsed >= OFFER_DECAY_SECS {
+        return Ok(floor);
+    }
+    // start >= floor and elapsed < OFFER_DECAY_SECS, so the drop is below start - floor
+    let drop = (start - floor)
+        .checked_mul(elapsed as u64)
+        .map(|v| v / OFFER_DECAY_SECS as u64)
+        .ok_or_else(|| error!(InstarError::Insolvent))?;
+    Ok(start - drop)
+}
 
 #[cfg(feature = "short-timers")]
 pub const ABANDONED_AFTER: i64 = 4;
@@ -64,6 +96,10 @@ pub const ESCHEAT_AFTER: i64 = 4;
 pub const CULL_TIMEOUT: i64 = 3;
 #[cfg(feature = "short-timers")]
 pub const LISTING_MAX_AGE: i64 = 6;
+#[cfg(feature = "short-timers")]
+pub const OFFER_HOLD_SECS: i64 = 30;
+#[cfg(feature = "short-timers")]
+pub const OFFER_DECAY_SECS: i64 = 4;
 
 #[account]
 #[derive(InitSpace)]
@@ -147,10 +183,13 @@ pub struct Creature {
     /// listing is void once the asset has left that keeper's hands, and
     /// expires LISTING_MAX_AGE after `listed_at`.
     pub listed_by: Pubkey,
+    /// OWNED: when the resale listing was made. OFFERED: when the offer
+    /// opened, the start of its price curve (0 for an offer older than the curve).
     pub listed_at: i64,
     /// Lamports the fly has earned and holds, backed by the World account.
     pub vault: u64,
-    /// OFFERED: the primary price. OWNED: the resale price, 0 = not listed.
+    /// OFFERED: the opening price; `offer_price` gives the current one.
+    /// OWNED: the resale price, 0 = not listed.
     pub sale_price: u64,
     pub status: u8,
     pub pending_cull: bool,

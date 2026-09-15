@@ -2036,6 +2036,10 @@ export type Instar = {
           },
           {
             "name": "listedAt",
+            "docs": [
+              "OWNED: when the resale listing was made. OFFERED: when the offer",
+              "opened, the start of its price curve (0 for an offer older than the curve)."
+            ],
             "type": "i64"
           },
           {
@@ -2048,7 +2052,8 @@ export type Instar = {
           {
             "name": "salePrice",
             "docs": [
-              "OFFERED: the primary price. OWNED: the resale price, 0 = not listed."
+              "OFFERED: the opening price; `offer_price` gives the current one.",
+              "OWNED: the resale price, 0 = not listed."
             ],
             "type": "u64"
           },

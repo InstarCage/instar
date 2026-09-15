@@ -203,6 +203,7 @@ export function fillConstants(config, journal) {
       offerBase: sol(eco.offerBase), offerPerGen: sol(eco.offerPerGen), founderPrice: sol(BigInt(eco.offerBase) * BigInt(eco.founderPremium)), founderPremium: eco.founderPremium,
       rewardEveryEpochs: eco.rewardEveryEpochs, rewardMinutes: Math.round(epochMin * eco.rewardEveryEpochs), poolPayoutPct: eco.poolPayoutBps / 100,
       sweepMinutes: Math.round(eco.sweepIntervalMs / 60000), sweepPoolPct: eco.sweepPoolBps / 100, metabolismFull: sol(eco.metabolismFull), gasReserve: sol(eco.gasReserve),
+      offerHoldMinutes: Math.round(eco.offerHoldSecs / 60), offerDecayMinutes: Math.round(eco.offerDecaySecs / 60), offerFloorPct: eco.offerFloorBps / 100,
     });
   }
   if (config.roleCounts) for (const [k, n] of Object.entries(config.roleCounts)) v["role" + k] = n;

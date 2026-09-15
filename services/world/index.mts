@@ -77,9 +77,18 @@ const REWARD_EVERY_EPOCHS = 8;
 /// operator and compute-budget keys. 20 leaves room.
 const REWARD_CHUNK = 20;
 const POOL_PAYOUT_BPS = 2500n;
-const OFFER_BASE = parseSol("0.005");
-const OFFER_PER_GEN = parseSol("0.001");
+/// A newborn's offer opens at OFFER_BASE + OFFER_PER_GEN per generation
+/// (founders at FOUNDER_PREMIUM times the base) and follows the program's
+/// curve: the opening price holds OFFER_HOLD_SECS, then falls over
+/// OFFER_DECAY_SECS to OFFER_FLOOR_BPS of it. The three curve constants
+/// mirror the program's (state.rs) and are published so the site can quote
+/// the price of the moment; the program is the one that charges it.
+const OFFER_BASE = parseSol("0.05");
+const OFFER_PER_GEN = parseSol("0.01");
 const FOUNDER_PREMIUM = 2n;
+const OFFER_HOLD_SECS = 5 * 60;
+const OFFER_DECAY_SECS = 20 * 60;
+const OFFER_FLOOR_BPS = 2500;
 const SNAP_MAGIC = "instar-snap-2";
 /// The snapshot is the whole engine memory (~0.6 GB raw): gzip on disk,
 /// every five minutes, compressed off the main thread.
@@ -871,7 +880,12 @@ async function buildWorld() {
   return {
     cluster: CLUSTER, googleClientId: GOOGLE_CLIENT_ID, publicUrl: PUBLIC_URL, coin, build, publicRpc: process.env.INSTAR_PUBLIC_RPC ?? "",
     // the rules the site quotes, so no rate is typed into a page
-    economy: { offerBase: OFFER_BASE.toString(), offerPerGen: OFFER_PER_GEN.toString(), founderPremium: Number(FOUNDER_PREMIUM), rewardEveryEpochs: REWARD_EVERY_EPOCHS, poolPayoutBps: Number(POOL_PAYOUT_BPS), sweepIntervalMs: SWEEP_INTERVAL_MS, sweepPoolBps: SWEEP_POOL_BPS, metabolismFull: METABOLISM_FULL.toString(), gasReserve: GAS_RESERVE.toString() },
+    economy: {
+      offerBase: OFFER_BASE.toString(), offerPerGen: OFFER_PER_GEN.toString(), founderPremium: Number(FOUNDER_PREMIUM),
+      offerHoldSecs: OFFER_HOLD_SECS, offerDecaySecs: OFFER_DECAY_SECS, offerFloorBps: OFFER_FLOOR_BPS,
+      rewardEveryEpochs: REWARD_EVERY_EPOCHS, poolPayoutBps: Number(POOL_PAYOUT_BPS), sweepIntervalMs: SWEEP_INTERVAL_MS, sweepPoolBps: SWEEP_POOL_BPS,
+      metabolismFull: METABOLISM_FULL.toString(), gasReserve: GAS_RESERVE.toString(),
+    },
     corsOrigin: process.env.INSTAR_CORS_ORIGIN ?? "", siteDir: SITE_DIR, rootDir: ROOT, dataDir: DATA_DIR, adminToken: ADMIN_TOKEN,
     chain, store, engine, accounts, ops, log, bufferTicks: BUFFER_TICKS,
     tick: () => tick, capacity: () => capacity, lastEpoch: () => lastEpoch,

@@ -1,7 +1,9 @@
 // End-to-end suite against `anchor test`'s local validator. The program is
 // built with the `short-timers` feature so the recovery drills wait their
 // timers out in real time (ABANDONED_AFTER = ESCHEAT_AFTER = 4 s,
-// CULL_TIMEOUT = 3 s, LISTING_MAX_AGE = 6 s). Everything runs against one
+// CULL_TIMEOUT = 3 s, LISTING_MAX_AGE = 6 s, OFFER_HOLD = 30 s, OFFER_DECAY = 4 s;
+// every buy in this suite lands well inside the hold, so it pays the opening
+// price). Everything runs against one
 // World, so the order of the tests is the order of the world's life: market,
 // deaths, administration, and finally the operator vanishing. Every larva is
 // a Metaplex Core asset in the world's collection; the validator preloads
@@ -21,6 +23,8 @@ const ABANDONED_AFTER_S = 4;
 const ESCHEAT_AFTER_S = 4;
 const CULL_TIMEOUT_S = 3;
 const LISTING_MAX_AGE_S = 6;
+const OFFER_HOLD_S = 30;
+const OFFER_DECAY_S = 4;
 
 const NO_PARENT = new BN("18446744073709551615");
 const TAKE_ALL = new BN("18446744073709551615");
@@ -398,13 +402,31 @@ describe("instar", () => {
     await assertSolvent("buy");
   });
 
-  it("a buyer is never charged a price they did not see", async () => {
+  it("a buyer pays the current offer price and never more than they stated", async () => {
     const id = await newborn(SOL(1));
-    await expectError(buy(id, SOL(1).addn(1), alice), "WrongPrice");
+    expect((await creature(id)).listedAt.toNumber(), "the offer records when it opened").to.be.greaterThan(0);
     await expectError(buy(id, SOL(0.5), alice), "WrongPrice");
-    await buy(id, SOL(1), alice);
+    const before = await lamports(worldPda);
+    // stating more than the current price is allowed; the current price is what is paid
+    await buy(id, SOL(1).addn(1), alice);
+    expect((await lamports(worldPda)).sub(before).toString()).to.equal(SOL(1).toString());
     await expectError(buy(id, SOL(1), bob), "NotForSale");
     aliceKept = id;
+  });
+
+  it("an offer holds its opening price, then falls to a quarter of it", async () => {
+    const id = await newborn(SOL(1));
+    await sleep(OFFER_HOLD_S + OFFER_DECAY_S + 2);
+    await expectError(buy(id, SOL(0.25).subn(1), bob), "WrongPrice");
+    const before = await lamports(worldPda);
+    const w0 = await world();
+    // the price seen at the opening still buys, at what the offer has fallen to
+    await buy(id, SOL(1), bob);
+    const c = await creature(id);
+    expect((await lamports(worldPda)).sub(before).toString()).to.equal(SOL(0.25).toString());
+    expect(c.vault.toString()).to.equal(SOL(0.15).toString());
+    expect((await world()).metabolism.sub(w0.metabolism).toString()).to.equal(SOL(0.0375).toString());
+    expect((await ownerOf(id)).equals(bob.publicKey)).to.be.true;
   });
 
   it("the asset account must be the larva's own", async () => {
