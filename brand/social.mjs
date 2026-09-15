@@ -114,6 +114,19 @@ const cards = [
     const maxGen = Math.max(0, ...journal.flies.map(f => f.generation || 0));
     return card("pipe", `${head("$INSTAR · the first hour, on chain", "Trade, claim, fund, live.<br>It happened.")}<div class="timeline four"><div><b>${hm(pipe.launchedAt)} · launched</b>created on pump.fun; the creator is a fee-sharing config that pays the world's fee keypair 100%, shares final</div><div><b>${hm(pipe.claims[0].at)} – ${hm(pipe.claims[pipe.claims.length - 1].at)} · claimed, funded</b>${claimed.toFixed(4)} SOL of creator fees in ${pipe.claims.length} passes, ten minutes apart, funded into the World account: half metabolism, half pool</div><div><b>${hm(pipe.reward.at)} · epoch ${pipe.reward.epoch}</b>${pipe.reward.sol.toFixed(4)} SOL of the pool paid to the ${pipe.reward.flies} flies alive, by how each lived, in ${pipe.reward.txs} transactions</div><div><b>tick ${n(journal.tick)} · now</b>the cage holds ${journal.capacity} flies (${caps.length ? caps[0] : 8} at genesis); metabolism ${sol(journal.metabolism)} SOL, pool ${sol(journal.pool)} SOL; ${alive} alive, generation ${maxGen} born</div></div><p class="note" style="max-width:1050px">claims ${pipe.claims.map(c => c.sig.slice(0, 8) + "…").join(", ")} · every step a transaction on ${journal.worldPda} · epoch ${pipe.reward.epoch} replayed off-host and matched the chain</p><div class="plate-corner">${plate()}</div>`);
   })()] : []),
+
+  // the pool as it stands and when it next pays: the next reward epoch is
+  // the next multiple of rewardEveryEpochs after the current epoch
+  card("pool", (() => {
+    const eco = cfg.economy || {};
+    const every = eco.rewardEveryEpochs || 8, pct = (eco.poolPayoutBps || 2500) / 100;
+    const next = (Math.floor(journal.epoch / every) + 1) * every;
+    const ticksLeft = next * journal.epochInterval - journal.tick;
+    const minutes = Math.max(1, Math.round(ticksLeft / journal.tickrate / 60));
+    const offered = journal.flies.filter(f => f.status === 1).length;
+    const keepers = new Set(journal.flies.filter(f => f.status !== 4 && f.keeper && f.keeper !== journal.worldPda).map(f => f.keeper)).size;
+    return `${head("The pool, right now", `${sol(journal.pool)} SOL, and every eighth epoch<br>a quarter of it goes to the flies alive.`)}<div class="grid3 big"><div class="m"><div class="v">${sol(journal.pool)}<small>SOL</small></div><div class="k">the pool</div><div class="h">all $INSTAR creator fees now land here</div></div><div class="m"><div class="v">${minutes}<small>MIN</small></div><div class="k">until epoch ${next} pays</div><div class="h">${pct}% of the pool, by how each fly lived</div></div><div class="m"><div class="v">${alive}</div><div class="k">flies alive of ${journal.capacity}</div><div class="h">${keepers} keepers, ${offered} newborns offered</div></div></div><p class="note" style="max-width:1050px">a newborn is ${sol(eco.offerBase)} SOL + ${sol(eco.offerPerGen)} per generation (founders ×${eco.founderPremium}); it is a Metaplex Core NFT in your wallet; its vault is yours when it dies · scored on survival, foraging, energy, age, maturity, births, generation · nothing here is a forecast: the pool is what it is when the epoch comes</p><div class="plate-corner">${plate()}</div>`;
+  })()),
 ];
 
 const css = `
